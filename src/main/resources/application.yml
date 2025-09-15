@@ -1,6 +1,13 @@
 spring:
   application:
     name: Bo-ai-code-Editor-backend
+  # mysql
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    url: jdbc:mysql://localhost:3306/Bo_ai_code_Editor
+    username: root
+    password: BJHb151678
+
 server:
   port: 8123
   servlet:
@@ -11,7 +18,6 @@ springdoc:
     - group: 'default'
       paths-to-match: '/**'
       packages-to-scan: com.bjh.boaicodeeditor.controller
-# knife4j
 knife4j:
   enable: true
   setting:
