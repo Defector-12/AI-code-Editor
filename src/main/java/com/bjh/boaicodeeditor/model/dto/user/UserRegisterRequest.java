@@ -1,4 +1,4 @@
-package com.bjh.boaicodeeditor.model.dto;
+package com.bjh.boaicodeeditor.model.dto.user;
 
 import lombok.Data;
 

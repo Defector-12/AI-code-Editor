@@ -4,7 +4,7 @@ import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.StrUtil;
 import com.bjh.boaicodeeditor.exception.BusinessException;
 import com.bjh.boaicodeeditor.exception.ErrorCode;
-import com.bjh.boaicodeeditor.model.dto.UserQueryRequest;
+import com.bjh.boaicodeeditor.model.dto.user.UserQueryRequest;
 import com.bjh.boaicodeeditor.model.enums.UserRoleEnum;
 import com.bjh.boaicodeeditor.model.vo.LoginUserVO;
 import com.bjh.boaicodeeditor.model.vo.UserVO;

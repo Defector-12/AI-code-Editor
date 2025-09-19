@@ -1,6 +1,6 @@
 package com.bjh.boaicodeeditor.service;
 
-import com.bjh.boaicodeeditor.model.dto.UserQueryRequest;
+import com.bjh.boaicodeeditor.model.dto.user.UserQueryRequest;
 import com.bjh.boaicodeeditor.model.vo.LoginUserVO;
 import com.bjh.boaicodeeditor.model.vo.UserVO;
 import com.mybatisflex.core.query.QueryWrapper;

@@ -9,7 +9,7 @@ import com.bjh.boaicodeeditor.constant.UserConstant;
 import com.bjh.boaicodeeditor.exception.BusinessException;
 import com.bjh.boaicodeeditor.exception.ErrorCode;
 import com.bjh.boaicodeeditor.exception.ThrowUtils;
-import com.bjh.boaicodeeditor.model.dto.*;
+import com.bjh.boaicodeeditor.model.dto.user.*;
 import com.bjh.boaicodeeditor.model.vo.LoginUserVO;
 import com.bjh.boaicodeeditor.model.vo.UserVO;
 import com.mybatisflex.core.paginate.Page;
