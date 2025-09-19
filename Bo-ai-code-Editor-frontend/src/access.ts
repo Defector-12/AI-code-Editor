@@ -18,9 +18,18 @@ router.beforeEach(async (to, from, next) => {
     firstFetchLoginUser = false
   }
   const toUrl = to.fullPath
+  // 管理端保护
   if (toUrl.startsWith('/admin')) {
     if (!loginUser || loginUser.userRole !== 'admin') {
       message.error('没有权限')
+      next(`/user/login?redirect=${to.fullPath}`)
+      return
+    }
+  }
+  // 应用相关页面需要登录
+  if (toUrl.startsWith('/app')) {
+    if (!loginUser || !loginUser.id) {
+      message.warning('请先登录')
       next(`/user/login?redirect=${to.fullPath}`)
       return
     }

@@ -31,6 +31,11 @@ const originItems: SimpleMenuItem[] = [
     label: '用户管理',
     title: '用户管理',
   },
+  {
+    key: '/admin/appManage',
+    label: '应用管理',
+    title: '应用管理',
+  },
 ]
 
 // 过滤菜单项

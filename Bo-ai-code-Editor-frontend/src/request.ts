@@ -3,7 +3,8 @@ import { message } from 'ant-design-vue'
 
 // 创建 Axios 实例
 const myAxios = axios.create({
-  baseURL: 'http://localhost:8123/api',
+  // 通过 Vite 代理同源转发，确保携带 Cookie
+  baseURL: '/api',
   timeout: 60000,
   withCredentials: true,
 })
