@@ -1,10 +1,12 @@
 package com.bjh.boaicodeeditor.service;
 
 import com.bjh.boaicodeeditor.model.dto.app.AppQueryRequest;
+import com.bjh.boaicodeeditor.model.entity.User;
 import com.bjh.boaicodeeditor.model.vo.AppVO;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.core.service.IService;
 import com.bjh.boaicodeeditor.model.entity.App;
+import reactor.core.publisher.Flux;
 
 import java.util.List;
 
@@ -13,6 +15,23 @@ import java.util.List;
  *
  */
 public interface AppService extends IService<App> {
+
+    /**
+     * 聊天生成应用代码
+     * @param appId
+     * @param message
+     * @param loginUser
+     * @return
+     */
+    Flux<String> chatToGenCode(Long appId, String message, User loginUser);
+
+    /**
+     * 应用部署
+     *
+     * @return 可访问的部署地址
+     *
+     */
+    String deployApp(Long appId, User loginUser);
 
     /**
      * 获取应用封装类
@@ -31,6 +50,4 @@ public interface AppService extends IService<App> {
      * @return
      */
     QueryWrapper getQueryWrapper(AppQueryRequest appQueryRequest);
-
-
 }
