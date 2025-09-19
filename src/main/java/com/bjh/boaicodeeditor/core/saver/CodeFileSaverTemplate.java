@@ -8,7 +8,6 @@ import com.bjh.boaicodeeditor.exception.ErrorCode;
 import com.bjh.boaicodeeditor.model.enums.CodeGenTypeEnum;
 
 import java.io.File;
-import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 
 /**
@@ -18,7 +17,7 @@ import java.nio.charset.StandardCharsets;
 public abstract class CodeFileSaverTemplate<T> {
 
     // 文件保存根目录
-    private static final String FILE_SAVE_ROOT_DIR = System.getProperty("user.dir") + "/tmp/code_output";
+    protected static final String FILE_SAVE_ROOT_DIR = System.getProperty("user.dir") + "/tmp/code_output";
 
     /**
      * 模板方法：保存代码的标准流程
@@ -58,6 +57,7 @@ public abstract class CodeFileSaverTemplate<T> {
         String codeType = getCodeType().getValue();
         String uniqueDirName = StrUtil.format("{}_{}", codeType, IdUtil.getSnowflakeNextIdStr());
         String dirPath = FILE_SAVE_ROOT_DIR + File.separator + uniqueDirName;
+        FileUtil.mkdir(dirPath);
         return dirPath;
     }
 
@@ -69,7 +69,7 @@ public abstract class CodeFileSaverTemplate<T> {
      * @param content  文件内容
      */
     protected final void writeToFile(String dirPath, String filename, String content) {
-        if (StrUtil.isBlank(content)) {
+        if (StrUtil.isNotBlank(content)) {
             String filePath = dirPath + File.separator + filename;
             FileUtil.writeString(content, filePath, StandardCharsets.UTF_8);
         }

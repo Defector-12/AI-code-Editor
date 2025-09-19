@@ -37,11 +37,11 @@ public class AiCodeGeneratorFacade {
         return switch (codeGenTypeEnum) {
             case HTML ->{
                 HtmlCodeResult result = aiCodeGeneratorService.generateHtmlCode(userMessage);
-                yield  CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.HTML);
+                yield CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.HTML);
             }
             case MULTI_FILE -> {
                 MultiFileCodeResult result = aiCodeGeneratorService.generateMultiFileCode(userMessage);
-                yield  CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.MULTI_FILE);
+                yield CodeFileSaverExecutor.executeSaver(result, CodeGenTypeEnum.MULTI_FILE);
             }
             default -> {
                 String errorMessage = "不支持生成的类型：" + codeGenTypeEnum.getValue();
@@ -86,12 +86,12 @@ public class AiCodeGeneratorFacade {
     private Flux<String> processCodeStream(Flux<String> codeStream, CodeGenTypeEnum codeGenTypeEnum) {
         StringBuilder codeBuilder = new StringBuilder();
         return codeStream.doOnNext(chunk -> {
+            // 实时收集代码片段
                     codeBuilder.append(chunk);
                 })
                 .doOnComplete(() -> {
                     // 流式返回完成后，保存代码
                     try {
-                        // 使用执行器保存代码
                         String completeCode = codeBuilder.toString();
                         // 使用执行器解析代码
                         Object parseredCode = CodeParserExecutor.executeParser(completeCode, codeGenTypeEnum);
