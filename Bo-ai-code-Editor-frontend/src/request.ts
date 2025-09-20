@@ -1,10 +1,11 @@
 import axios from 'axios'
+import { API_BASE_URL } from '@/env'
 import { message } from 'ant-design-vue'
 
 // 创建 Axios 实例
 const myAxios = axios.create({
-  // 通过 Vite 代理同源转发，确保携带 Cookie
-  baseURL: '/api',
+  // 统一从环境变量中读取，支持代理或直连
+  baseURL: API_BASE_URL,
   timeout: 60000,
   withCredentials: true,
 })

@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAppVoById } from '@/api/appController.ts'
+import { getDeployUrl } from '@/env'
 
 const route = useRoute()
 const router = useRouter()
@@ -16,6 +17,13 @@ const fetchData = async () => {
 }
 
 onMounted(fetchData)
+
+function openWork() {
+  const key = app.value?.deployKey
+  if (!key) return
+  const url = getDeployUrl(key)
+  window.open(url, '_blank')
+}
 </script>
 
 <template>
@@ -30,7 +38,12 @@ onMounted(fetchData)
           <a-descriptions-item label="优先级">{{ app?.priority }}</a-descriptions-item>
         </a-descriptions>
         <a-space>
-          <a-button type="primary" @click="router.push(`/app/${app?.id}/chat`)">打开对话</a-button>
+          <a-button
+            type="primary"
+            @click="router.push({ path: `/app/${app?.id}/chat`, query: { view: '1' } })"
+            >打开对话</a-button
+          >
+          <a-button v-if="app?.deployKey" @click="openWork">查看作品</a-button>
           <a-button @click="router.push(`/app/${app?.id}/edit`)">编辑信息</a-button>
         </a-space>
       </a-space>

@@ -3,6 +3,7 @@ import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { addApp, listMyAppVoByPage, listGoodAppVoByPage } from '@/api/appController.ts'
 import { message } from 'ant-design-vue'
+import AppCard from '@/components/AppCard.vue'
 
 const router = useRouter()
 
@@ -31,7 +32,13 @@ const doCreate = async () => {
 }
 
 // 我的应用列表
-const mySearch = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 20, appName: '' })
+const mySearch = reactive<API.AppQueryRequest>({
+  pageNum: 1,
+  pageSize: 20,
+  appName: '',
+  sortField: 'createTime',
+  sortOrder: 'descend',
+})
 const myTotal = ref(0)
 const myList = ref<API.AppVO[]>([])
 const fetchMyList = async () => {
@@ -43,7 +50,13 @@ const fetchMyList = async () => {
 }
 
 // 精选应用列表
-const goodSearch = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 20, appName: '' })
+const goodSearch = reactive<API.AppQueryRequest>({
+  pageNum: 1,
+  pageSize: 20,
+  appName: '',
+  sortField: 'createTime',
+  sortOrder: 'descend',
+})
 const goodTotal = ref(0)
 const goodList = ref<API.AppVO[]>([])
 const fetchGoodList = async () => {
@@ -80,24 +93,31 @@ const toDetail = (id?: number) => {
 
 const toChat = (id?: number) => {
   if (!id) return
-  router.push(`/app/${id}/chat`)
+  router.push({ path: `/app/${id}/chat`, query: { view: '1' } })
 }
 
 const toEdit = (id?: number) => {
   if (!id) return
   router.push(`/app/${id}/edit`)
 }
+
+const toWork = (deployKey?: string) => {
+  if (!deployKey) return
+  const url = `http://localhost/${deployKey}`
+  window.open(url, '_blank')
+}
 </script>
 
 <template>
   <div class="home">
     <div class="hero">
-      <div class="title">一句话，星所想</div>
-      <div class="subtitle">与 AI 对话轻松创建应用和网站</div>
+      <div class="title">AI 应用生成平台</div>
+      <div class="subtitle">一句话轻松创建网站应用</div>
       <a-textarea
         v-model:value="prompt"
-        placeholder="使用 NoCode 创建一个高效的小工具，帮我计算……"
+        placeholder="帮我创建个人博客网站"
         :rows="3"
+        class="hero-input"
       />
       <div class="hero-actions">
         <a-button type="primary" size="large" :loading="creating" @click="doCreate"
@@ -124,17 +144,14 @@ const toEdit = (id?: number) => {
       <a-list :grid="{ gutter: 16, column: 4 }" :data-source="myList">
         <template #renderItem="{ item }">
           <a-list-item>
-            <a-card :hoverable="true" @click="toDetail(item.id)">
-              <template #cover>
-                <img :src="item.cover || 'https://via.placeholder.com/600x360?text=Cover'" />
-              </template>
-              <a-card-meta :title="item.appName" :description="'作者ID：' + (item.userId ?? '-')" />
-              <template #actions>
-                <a @click.stop="toDetail(item.id)">详情</a>
-                <a @click.stop="toChat(item.id)">对话</a>
-                <a @click.stop="toEdit(item.id)">编辑</a>
-              </template>
-            </a-card>
+            <AppCard
+              :app="item"
+              :showEdit="true"
+              @detail="toDetail"
+              @chat="toChat"
+              @work="toWork"
+              @edit="toEdit"
+            />
           </a-list-item>
         </template>
       </a-list>
@@ -170,16 +187,7 @@ const toEdit = (id?: number) => {
       <a-list :grid="{ gutter: 16, column: 4 }" :data-source="goodList">
         <template #renderItem="{ item }">
           <a-list-item>
-            <a-card :hoverable="true" @click="toDetail(item.id)">
-              <template #cover>
-                <img :src="item.cover || 'https://via.placeholder.com/600x360?text=Cover'" />
-              </template>
-              <a-card-meta :title="item.appName" :description="'作者ID：' + (item.userId ?? '-')" />
-              <template #actions>
-                <a @click.stop="toDetail(item.id)">详情</a>
-                <a @click.stop="toChat(item.id)">对话</a>
-              </template>
-            </a-card>
+            <AppCard :app="item" @detail="toDetail" @chat="toChat" @work="toWork" />
           </a-list-item>
         </template>
       </a-list>
@@ -206,7 +214,7 @@ const toEdit = (id?: number) => {
 }
 .hero {
   margin: 16px auto 24px;
-  background: linear-gradient(180deg, #e6f7ff 0%, #fff 100%);
+  background: transparent;
   padding: 24px;
   border-radius: 12px;
   text-align: center;
@@ -218,6 +226,10 @@ const toEdit = (id?: number) => {
 .subtitle {
   color: rgba(0, 0, 0, 0.45);
   margin: 8px 0 16px;
+}
+.hero-input {
+  border: none;
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
 }
 .hero-actions {
   margin-top: 12px;
@@ -246,5 +258,16 @@ img {
   width: 100%;
   height: 180px;
   object-fit: cover;
+}
+
+/* 页面级渐变背景 */
+:root,
+body,
+html {
+  background: linear-gradient(135deg, #0f2027 0%, #203a43 50%, #2c5364 100%);
+}
+/* 内容区域保持透明以呈现背景 */
+:deep(.ant-layout-content) {
+  background: transparent;
 }
 </style>

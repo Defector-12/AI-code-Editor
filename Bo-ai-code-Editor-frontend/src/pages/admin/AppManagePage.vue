@@ -4,6 +4,7 @@ import { listAppVoByPageByAdmin, deleteAppByAdmin, updateAppByAdmin } from '@/ap
 import { message } from 'ant-design-vue'
 import dayjs from 'dayjs'
 import { useRouter } from 'vue-router'
+import { CODE_GEN_TYPE_MAP, CODE_GEN_TYPE_OPTIONS } from '@/constants/codeGenType.ts'
 
 const router = useRouter()
 
@@ -11,6 +12,7 @@ const columns = [
   { title: 'ID', dataIndex: 'id' },
   { title: '名称', dataIndex: 'appName' },
   { title: '封面', dataIndex: 'cover' },
+  { title: '生成类型', dataIndex: 'codeGenType' },
   { title: '优先级', dataIndex: 'priority' },
   { title: '创建时间', dataIndex: 'createTime' },
   { title: '操作', key: 'action' },
@@ -18,7 +20,12 @@ const columns = [
 
 const data = ref<API.AppVO[]>([])
 const total = ref(0)
-const searchParams = reactive<API.AppQueryRequest>({ pageNum: 1, pageSize: 10 })
+const searchParams = reactive<API.AppQueryRequest>({
+  pageNum: 1,
+  pageSize: 10,
+  sortField: 'createTime',
+  sortOrder: 'descend',
+})
 
 const fetchData = async () => {
   const res = await listAppVoByPageByAdmin({ ...searchParams })
@@ -76,6 +83,18 @@ onMounted(fetchData)
       <a-form-item label="名称">
         <a-input v-model:value="searchParams.appName" placeholder="输入名称" />
       </a-form-item>
+      <a-form-item label="生成类型">
+        <a-select
+          v-model:value="(searchParams as any).codeGenType"
+          allow-clear
+          placeholder="选择生成类型"
+          style="min-width: 160px"
+        >
+          <a-select-option v-for="opt in CODE_GEN_TYPE_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </a-select-option>
+        </a-select>
+      </a-form-item>
       <a-form-item>
         <a-button type="primary" html-type="submit">搜索</a-button>
       </a-form-item>
@@ -90,6 +109,12 @@ onMounted(fetchData)
       <template #bodyCell="{ column, record }">
         <template v-if="column.dataIndex === 'cover'">
           <a-image :src="record.cover" :width="120" />
+        </template>
+        <template v-else-if="column.dataIndex === 'codeGenType'">
+          {{
+            CODE_GEN_TYPE_MAP[record.codeGenType as keyof typeof CODE_GEN_TYPE_MAP] ||
+            record.codeGenType
+          }}
         </template>
         <template v-else-if="column.dataIndex === 'createTime'">
           {{ dayjs(record.createTime).format('YYYY-MM-DD HH:mm:ss') }}
