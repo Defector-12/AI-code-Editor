@@ -10,7 +10,7 @@ const appIdStr = String(route.params.id || '')
 const app = ref<API.AppVO | undefined>()
 
 const fetchData = async () => {
-  const res = await getAppVoById({ id: appIdStr as any })
+  const res = await getAppVoById({ id: Number(appIdStr) })
   if (res.data.code === 0) {
     app.value = res.data.data
   }
@@ -38,9 +38,7 @@ function openWork() {
           <a-descriptions-item label="优先级">{{ app?.priority }}</a-descriptions-item>
         </a-descriptions>
         <a-space>
-          <a-button
-            type="primary"
-            @click="router.push({ path: `/app/${app?.id}/chat`, query: { view: '1' } })"
+          <a-button type="primary" @click="router.push({ path: `/app/${app?.id}/chat` })"
             >打开对话</a-button
           >
           <a-button v-if="app?.deployKey" @click="openWork">查看作品</a-button>

@@ -1,18 +1,32 @@
 spring:
   application:
     name: Bo-ai-code-Editor-backend
+  session:
+    store-type: redis
+    # 30 天过期
+    timeout: 2592000
   # mysql
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/Bo_ai_code_Editor
     username: root
     password: BJHb151678
+  data:
+    redis:
+      host: localhost
+      ttl: 3600
+      password:
+      port: 6379
   profiles:
     active: local
 server:
   port: 8123
   servlet:
     context-path: /api
+    # cookie 30天过期
+    session:
+      cookie:
+        max-age: 2592000
 # springdoc-openapi
 springdoc:
   group-configs:

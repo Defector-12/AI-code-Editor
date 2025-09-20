@@ -8,7 +8,7 @@ import {
   deleteAppByAdmin,
   deleteApp,
 } from '@/api/appController.ts'
-import myAxios from '@/request'
+import { listAppChatHistory } from '@/api/chatHistoryController.ts'
 import { message } from 'ant-design-vue'
 import MarkdownIt from 'markdown-it'
 import hljs from 'highlight.js'
@@ -28,7 +28,7 @@ const deployedUrl = ref<string>('')
 const showInfo = ref(false)
 
 type MsgPiece = { type: 'text' | 'code'; content: string; lang?: string }
-type ChatMsg = { role: 'user' | 'ai'; content: string; pieces?: MsgPiece[] }
+type ChatMsg = { role: 'user' | 'ai'; content: string; createTime?: string; pieces?: MsgPiece[] }
 const messages = ref<ChatMsg[]>([])
 const md = new MarkdownIt({
   html: true,
@@ -48,9 +48,15 @@ const md = new MarkdownIt({
 const inputText = ref('')
 const previewUrl = ref<string>('')
 const codeStreamDone = ref(false)
+const historyLoading = ref(false)
+const historyHasMore = ref(false)
+const historyCursor = ref<string | undefined>(undefined)
+const totalHistory = ref(0)
+const autoScroll = ref(true)
+const appIdVal = computed(() => String(app.value?.id ?? route.params.id ?? ''))
 
 const fetchApp = async () => {
-  const res = await getAppVoById({ id: appIdStr as any })
+  const res = await getAppVoById({ id: appIdStr })
   if (res.data.code === 0) {
     app.value = res.data.data
   }
@@ -62,19 +68,18 @@ const markGenDone = () => localStorage.setItem(genDoneKey, '1')
 
 onMounted(async () => {
   await fetchApp()
-  // 若已生成过，直接尝试展示预览，不再自动发起生成
-  if (hasGenDone()) {
+  await loadInitialHistory()
+  // 进入页面时：若历史记录达 2 条或以上，展示网站；否则根据本地标记也可展示
+  if (hasGenDone() || totalHistory.value >= 2) {
     codeStreamDone.value = true
-    const prefix = `/api/static/${app.value?.codeGenType ?? 'vite'}_${appIdStr}/`
-    previewUrl.value = `${prefix}?t=${Date.now()}`
-    return
+    const codeType = (app.value?.codeGenType as string) || 'vite'
+    previewUrl.value = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${Date.now()}`
   }
-  // 自动发送初始提示词（当未携带 view=1 时）
-  const viewOnly = route.query.view === '1'
-  if (!viewOnly) {
-    const init = (route.query.init as string) || app.value?.initPrompt || ''
+  // 自动发送初始消息：仅当自己的应用且没有对话历史
+  if (messages.value.length === 0 && canEdit.value) {
+    const init = app.value?.initPrompt || ''
     if (init) {
-      inputText.value = decodeURIComponent(init)
+      inputText.value = init
       await doSend()
     }
   }
@@ -83,7 +88,7 @@ onMounted(async () => {
 const scrollRef = ref<HTMLDivElement | null>(null)
 watch(messages, async () => {
   await nextTick()
-  if (scrollRef.value) {
+  if (autoScroll.value && scrollRef.value) {
     scrollRef.value.scrollTop = scrollRef.value.scrollHeight
   }
 })
@@ -107,11 +112,12 @@ async function doSend() {
   // SSE
   loading.value = true
   codeStreamDone.value = false
-  let aiMsgIndex = messages.value.push({ role: 'ai', content: '' }) - 1
+  autoScroll.value = true
+  const aiMsgIndex = messages.value.push({ role: 'ai', content: '' }) - 1
   try {
     // 统一走环境变量域名
     const apiBase = (API_BASE_URL || '/api').replace(/\/$/, '')
-    const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdStr)}&message=${encodeURIComponent(text)}`
+    const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdVal.value)}&message=${encodeURIComponent(text)}`
     const es = new EventSource(url, { withCredentials: true })
     es.onmessage = (ev) => {
       // 处理多种结尾标识
@@ -191,6 +197,65 @@ function buildPiecesFromContent(content: string): MsgPiece[] {
   return pieces
 }
 
+function toChatMsg(h: API.ChatHistory): ChatMsg {
+  const type = (h.messageType || '').toLowerCase()
+  const role: 'user' | 'ai' = type.includes('user') ? 'user' : 'ai'
+  return { role, content: h.message || '', createTime: h.createTime }
+}
+
+function sortAscByTime(arr: ChatMsg[]) {
+  return arr.sort((a, b) => {
+    const ta = new Date(a.createTime || 0).getTime()
+    const tb = new Date(b.createTime || 0).getTime()
+    return ta - tb
+  })
+}
+
+async function loadInitialHistory() {
+  historyLoading.value = true
+  autoScroll.value = false
+  try {
+    const res = await listAppChatHistory({ appId: appIdVal.value })
+    if (res.data.code === 0) {
+      const page = res.data.data
+      totalHistory.value = page?.totalRow || 0
+      const list = (page?.records || []).map(toChatMsg)
+      const asc = sortAscByTime(list)
+      messages.value = asc
+      historyHasMore.value = (page?.totalRow || 0) > (page?.records?.length || 0)
+      historyCursor.value = asc[0]?.createTime
+    }
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+async function loadMoreHistory() {
+  if (historyLoading.value || !historyHasMore.value) return
+  historyLoading.value = true
+  autoScroll.value = false
+  try {
+    const res = await listAppChatHistory({
+      appId: appIdVal.value,
+      lastCreateTime: historyCursor.value as any,
+    })
+    if (res.data.code === 0) {
+      const page = res.data.data
+      const list = (page?.records || []).map(toChatMsg)
+      const asc = sortAscByTime(list)
+      if (asc.length === 0) {
+        historyHasMore.value = false
+        return
+      }
+      messages.value = [...asc, ...messages.value]
+      historyHasMore.value = (page?.records?.length || 0) >= 10
+      historyCursor.value = asc[0]?.createTime
+    }
+  } finally {
+    historyLoading.value = false
+  }
+}
+
 async function doDeploy() {
   deploying.value = true
   try {
@@ -242,6 +307,11 @@ async function doDeleteApp() {
     <div class="content">
       <div class="left" :class="{ disabled: !canEdit }">
         <div class="messages" ref="scrollRef">
+          <div class="load-more" v-if="historyHasMore">
+            <a-button type="link" size="small" :loading="historyLoading" @click="loadMoreHistory"
+              >加载更多</a-button
+            >
+          </div>
           <div v-for="(m, idx) in messages" :key="idx" class="msg" :class="m.role">
             <template v-if="m.role === 'ai'">
               <div class="bubble rich">
@@ -284,7 +354,7 @@ async function doDeleteApp() {
         <div v-if="codeStreamDone" class="preview">
           <iframe :src="previewUrl" frameborder="0" />
         </div>
-        <a-empty v-else description="生成完成后在此展示预览" />
+        <a-empty v-else description="聊天生成完成或历史达到 2 条后展示预览" />
       </div>
     </div>
   </div>
@@ -332,6 +402,10 @@ async function doDeleteApp() {
   overflow: auto;
   overflow-x: hidden;
   padding: 8px;
+}
+.load-more {
+  text-align: center;
+  margin-bottom: 8px;
 }
 .msg {
   display: flex;
