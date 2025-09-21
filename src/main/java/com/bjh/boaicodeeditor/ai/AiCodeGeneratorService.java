@@ -3,7 +3,9 @@ package com.bjh.boaicodeeditor.ai;
 import com.bjh.boaicodeeditor.ai.model.HtmlCodeResult;
 import com.bjh.boaicodeeditor.ai.model.MultiFileCodeResult;
 
+import dev.langchain4j.service.MemoryId;
 import dev.langchain4j.service.SystemMessage;
+import dev.langchain4j.service.UserMessage;
 import reactor.core.publisher.Flux;
 
 public interface AiCodeGeneratorService {
@@ -25,7 +27,7 @@ public interface AiCodeGeneratorService {
     MultiFileCodeResult generateMultiFileCode(String userMessage);
 
     /**
-     * 生成代码
+     * 生成 HTML 代码（流式）
      * @param userMessage
      * @return
      */
@@ -33,10 +35,18 @@ public interface AiCodeGeneratorService {
     Flux<String> generateHtmlCodeStream(String userMessage);
 
     /**
-     * 生成多文件代码
+     * 生成多文件代码（流式）
      * @param userMessage
      * @return
      */
     @SystemMessage(fromResource = "prompt/codegen-multi-file-system-prompt.txt")
     Flux<String> generateMultiFileCodeStream(String userMessage);
+
+    /**
+     * 生成 Vue 项目代码（流式）
+     * @param userMessage
+     * @return
+     */
+    @SystemMessage(fromResource = "prompt/codegen-vue-project-system-prompt.txt")
+    Flux<String> generateVueProjectCodeStream(@MemoryId long appId, @UserMessage String userMessage);
 }
