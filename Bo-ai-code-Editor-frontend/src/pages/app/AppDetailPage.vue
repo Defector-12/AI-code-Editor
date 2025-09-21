@@ -21,7 +21,7 @@ onMounted(fetchData)
 function openWork() {
   const key = app.value?.deployKey
   if (!key) return
-  const url = getDeployUrl(key)
+  const url = getDeployUrl(key, app.value?.codeGenType as string | undefined)
   window.open(url, '_blank')
 }
 </script>

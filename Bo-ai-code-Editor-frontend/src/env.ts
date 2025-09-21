@@ -5,18 +5,26 @@
  * - getStaticPreviewUrl: 本地生成预览静态资源 http(s)://STATIC_HOST/api/static/{codeGenType}_{appId}/
  */
 
-const VITE_API_BASE_URL = (import.meta as any).env?.VITE_API_BASE_URL as string | undefined
-const VITE_DEPLOY_HOST = (import.meta as any).env?.VITE_DEPLOY_HOST as string | undefined
-const VITE_STATIC_HOST = (import.meta as any).env?.VITE_STATIC_HOST as string | undefined
+const VITE_API_BASE_URL = import.meta.env?.VITE_API_BASE_URL as string | undefined
+const VITE_DEPLOY_HOST = import.meta.env?.VITE_DEPLOY_HOST as string | undefined
+const VITE_STATIC_HOST = import.meta.env?.VITE_STATIC_HOST as string | undefined
 
 export const API_BASE_URL = (VITE_API_BASE_URL || '/api').replace(/\/$/, '')
 
-export function getDeployUrl(deployKey: string) {
+export function getDeployUrl(deployKey: string, codeGenType?: string) {
   const host = (VITE_DEPLOY_HOST || 'http://localhost').replace(/\/$/, '')
-  return `${host}/${deployKey}`
+  const base = `${host}/${deployKey}`
+  if ((codeGenType || '').toLowerCase() === 'vue_project') {
+    return `${base}/dist/index.html`
+  }
+  return base
 }
 
 export function getStaticPreviewUrl(codeGenType: string, appId: string | number) {
   const host = (VITE_STATIC_HOST || 'http://localhost:8123').replace(/\/$/, '')
-  return `${host}/api/static/${codeGenType}_${appId}/`
+  const base = `${host}/api/static/${codeGenType}_${appId}`
+  if ((codeGenType || '').toLowerCase() === 'vue_project') {
+    return `${base}/dist/index.html`
+  }
+  return `${base}/`
 }

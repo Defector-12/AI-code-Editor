@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, reactive, ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { getDeployUrl } from '@/env'
 import { addApp, listMyAppVoByPage, listGoodAppVoByPage } from '@/api/appController.ts'
 import { message } from 'ant-design-vue'
 import AppCard from '@/components/AppCard.vue'
@@ -101,9 +102,9 @@ const toEdit = (id?: number) => {
   router.push(`/app/${id}/edit`)
 }
 
-const toWork = (deployKey?: string) => {
+const toWork = (deployKey?: string, codeGenType?: string) => {
   if (!deployKey) return
-  const url = `http://localhost/${deployKey}`
+  const url = getDeployUrl(deployKey, codeGenType)
   window.open(url, '_blank')
 }
 </script>

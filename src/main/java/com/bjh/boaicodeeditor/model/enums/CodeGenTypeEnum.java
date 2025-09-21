@@ -26,7 +26,7 @@ public enum CodeGenTypeEnum {
      * @param value
      * @return
      */
-    public static CodeGenTypeEnum getEnumValue(String value) {
+    public static CodeGenTypeEnum getEnumByValue(String value) {
         if (ObjUtil.isEmpty(value)) {
             return null;
         }

@@ -9,7 +9,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'detail', id?: number): void
   (e: 'chat', id?: number): void
-  (e: 'work', deployKey?: string): void
+  (e: 'work', deployKey?: string, codeGenType?: string): void
   (e: 'edit', id?: number): void
 }>()
 </script>
@@ -23,7 +23,11 @@ const emit = defineEmits<{
     <template #actions>
       <a @click.stop="emit('detail', props.app.id)">详情</a>
       <a @click.stop="emit('chat', props.app.id)">对话</a>
-      <a v-if="props.app.deployKey" @click.stop="emit('work', props.app.deployKey)">查看作品</a>
+      <a
+        v-if="props.app.deployKey"
+        @click.stop="emit('work', props.app.deployKey, props.app.codeGenType as string)"
+        >查看作品</a
+      >
       <a v-if="showEdit" @click.stop="emit('edit', props.app.id)">编辑</a>
     </template>
   </a-card>

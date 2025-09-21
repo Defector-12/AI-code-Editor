@@ -1,13 +1,7 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref, watch, nextTick, computed } from 'vue'
+import { onMounted, ref, watch, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import {
-  chatToGenCsode,
-  deployApp,
-  getAppVoById,
-  deleteAppByAdmin,
-  deleteApp,
-} from '@/api/appController.ts'
+import { deployApp, getAppVoById, deleteAppByAdmin, deleteApp } from '@/api/appController.ts'
 import { listAppChatHistory } from '@/api/chatHistoryController.ts'
 import { message } from 'ant-design-vue'
 import MarkdownIt from 'markdown-it'
@@ -40,7 +34,7 @@ const md = new MarkdownIt({
         return `<pre class="hljs"><code>${hljs.highlight(str, { language: lang, ignoreIllegals: true }).value}</code></pre>`
       }
       return `<pre class="hljs"><code>${hljs.highlightAuto(str).value}</code></pre>`
-    } catch (__) {
+    } catch {
       return `<pre class="hljs"><code>${str}</code></pre>`
     }
   },
@@ -72,7 +66,7 @@ onMounted(async () => {
   // 进入页面时：若历史记录达 2 条或以上，展示网站；否则根据本地标记也可展示
   if (hasGenDone() || totalHistory.value >= 2) {
     codeStreamDone.value = true
-    const codeType = (app.value?.codeGenType as string) || 'vite'
+    const codeType = (app.value?.codeGenType as string) || 'html'
     previewUrl.value = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${Date.now()}`
   }
   // 自动发送初始消息：仅当自己的应用且没有对话历史
@@ -136,7 +130,7 @@ async function doSend() {
         else if (typeof obj?.data === 'string') chunk = obj.data
         else if (typeof obj?.content === 'string') chunk = obj.content
         else if (typeof obj?.text === 'string') chunk = obj.text
-      } catch (_) {
+      } catch {
         // 非 JSON，直接使用
       }
       messages.value[aiMsgIndex].content += chunk
@@ -145,7 +139,7 @@ async function doSend() {
       es.close()
       finalizeAfterStream(aiMsgIndex)
     }
-  } catch (e) {
+  } catch {
     loading.value = false
   }
 }
@@ -160,7 +154,7 @@ function finalizeAfterStream(aiMsgIndex: number) {
   markGenDone()
   // 刷新应用信息以拿到最新 codeGenType / 目录
   fetchApp().then(() => {
-    const codeType = (app.value?.codeGenType as string) || 'vite'
+    const codeType = (app.value?.codeGenType as string) || 'html'
     // 加时间戳防缓存
     previewUrl.value = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${Date.now()}`
   })
@@ -184,10 +178,6 @@ function buildPiecesFromContent(content: string): MsgPiece[] {
     pieces.push({ type: 'text', content: content.slice(lastIndex) })
   }
   // 如果没有 Markdown 代码块，但内容包含完整 HTML，则整体当代码展示
-  const joined = pieces
-    .map((p) => (p.type === 'code' ? p.content : ''))
-    .join('')
-    .trim()
   if (pieces.length === 1 && pieces[0].type === 'text') {
     const t = pieces[0].content
     if (/(<!DOCTYPE|<html[\s>]|<head[\s>]|<body[\s>])/i.test(t) && /<\/html>/i.test(t)) {
@@ -237,7 +227,7 @@ async function loadMoreHistory() {
   try {
     const res = await listAppChatHistory({
       appId: appIdVal.value,
-      lastCreateTime: historyCursor.value as any,
+      lastCreateTime: historyCursor.value || undefined,
     })
     if (res.data.code === 0) {
       const page = res.data.data
@@ -259,7 +249,7 @@ async function loadMoreHistory() {
 async function doDeploy() {
   deploying.value = true
   try {
-    const res = await deployApp({ appId: appIdStr as any })
+    const res = await deployApp({ appId: appIdStr })
     if (res.data.code === 0) {
       deployedUrl.value = res.data.data || ''
       if (deployedUrl.value) {
