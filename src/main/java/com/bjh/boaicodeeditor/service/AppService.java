@@ -1,5 +1,6 @@
 package com.bjh.boaicodeeditor.service;
 
+import com.bjh.boaicodeeditor.model.dto.app.AppAddRequest;
 import com.bjh.boaicodeeditor.model.dto.app.AppQueryRequest;
 import com.bjh.boaicodeeditor.model.entity.User;
 import com.bjh.boaicodeeditor.model.vo.AppVO;
@@ -24,6 +25,14 @@ public interface AppService extends IService<App> {
      * @return
      */
     Flux<String> chatToGenCode(Long appId, String message, User loginUser);
+
+    /**
+     * 创建应用
+     * @param appAddRequest
+     * @param loginUser
+     * @return
+     */
+    Long createApp(AppAddRequest appAddRequest, User loginUser);
 
     /**
      * 应用部署

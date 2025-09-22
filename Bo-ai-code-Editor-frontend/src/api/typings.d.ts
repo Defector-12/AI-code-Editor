@@ -11,7 +11,7 @@ declare namespace API {
   }
 
   type AppDeployRequest = {
-    appId?: string | number
+    appId?: number
   }
 
   type AppQueryRequest = {
@@ -134,7 +134,7 @@ declare namespace API {
   }
 
   type chatToGenCsodeParams = {
-    appId: string | number
+    appId: number
     message: string
   }
 
@@ -142,12 +142,16 @@ declare namespace API {
     id?: number
   }
 
+  type downloadAppCodeParams = {
+    appId: number
+  }
+
   type getAppVOByIdByAdminParams = {
     id: number
   }
 
   type getAppVOByIdParams = {
-    id: string | number
+    id: number
   }
 
   type getUserByIdParams = {
@@ -159,7 +163,7 @@ declare namespace API {
   }
 
   type listAppChatHistoryParams = {
-    appId: string | number
+    appId: number
     pageSize?: number
     lastCreateTime?: string
   }

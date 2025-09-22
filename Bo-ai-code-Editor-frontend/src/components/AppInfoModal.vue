@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { defineProps, defineEmits } from 'vue'
+import { defineProps, defineEmits, computed } from 'vue'
+import { CODE_GEN_TYPE_MAP } from '@/constants/codeGenType.ts'
 
 const props = defineProps<{
   open: boolean
@@ -14,6 +15,12 @@ const emit = defineEmits<{
 }>()
 
 const close = () => emit('update:open', false)
+
+const codeGenTypeLabel = computed(() => {
+  const t = props.app?.codeGenType as keyof typeof CODE_GEN_TYPE_MAP | undefined
+  if (!t) return undefined
+  return CODE_GEN_TYPE_MAP[t] || (t as unknown as string)
+})
 </script>
 
 <template>
@@ -25,6 +32,10 @@ const close = () => emit('update:open', false)
             <a-avatar :src="app?.user?.userAvatar" />
             <span>{{ app?.user?.userName || '用户' }}</span>
           </a-space>
+        </a-descriptions-item>
+        <a-descriptions-item label="生成类型">
+          <a-tag v-if="codeGenTypeLabel" color="blue">{{ codeGenTypeLabel }}</a-tag>
+          <span v-else>未设置</span>
         </a-descriptions-item>
         <a-descriptions-item label="创建时间">{{ app?.createTime }}</a-descriptions-item>
       </a-descriptions>

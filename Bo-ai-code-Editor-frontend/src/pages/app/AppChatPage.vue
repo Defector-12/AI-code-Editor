@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { onMounted, ref, watch, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { deployApp, getAppVoById, deleteAppByAdmin, deleteApp } from '@/api/appController.ts'
+import {
+  deployApp,
+  getAppVoById,
+  deleteAppByAdmin,
+  deleteApp,
+  downloadAppCode,
+} from '@/api/appController.ts'
 import { listAppChatHistory } from '@/api/chatHistoryController.ts'
 import { message } from 'ant-design-vue'
 import MarkdownIt from 'markdown-it'
@@ -18,6 +24,7 @@ const appIdStr = String(route.params.id || '')
 const app = ref<API.AppVO | undefined>()
 const loading = ref(false)
 const deploying = ref(false)
+const downloading = ref(false)
 const deployedUrl = ref<string>('')
 const showInfo = ref(false)
 
@@ -47,10 +54,10 @@ const historyHasMore = ref(false)
 const historyCursor = ref<string | undefined>(undefined)
 const totalHistory = ref(0)
 const autoScroll = ref(true)
-const appIdVal = computed(() => String(app.value?.id ?? route.params.id ?? ''))
+// 使用字符串承载雪花 ID，避免 Number 精度丢失
 
 const fetchApp = async () => {
-  const res = await getAppVoById({ id: appIdStr })
+  const res = await getAppVoById({ id: appIdStr as unknown as number })
   if (res.data.code === 0) {
     app.value = res.data.data
   }
@@ -111,7 +118,7 @@ async function doSend() {
   try {
     // 统一走环境变量域名
     const apiBase = (API_BASE_URL || '/api').replace(/\/$/, '')
-    const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdVal.value)}&message=${encodeURIComponent(text)}`
+    const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdStr)}&message=${encodeURIComponent(text)}`
     const es = new EventSource(url, { withCredentials: true })
     es.onmessage = (ev) => {
       // 处理多种结尾标识
@@ -205,7 +212,7 @@ async function loadInitialHistory() {
   historyLoading.value = true
   autoScroll.value = false
   try {
-    const res = await listAppChatHistory({ appId: appIdVal.value })
+    const res = await listAppChatHistory({ appId: appIdStr as unknown as number })
     if (res.data.code === 0) {
       const page = res.data.data
       totalHistory.value = page?.totalRow || 0
@@ -226,7 +233,7 @@ async function loadMoreHistory() {
   autoScroll.value = false
   try {
     const res = await listAppChatHistory({
-      appId: appIdVal.value,
+      appId: appIdStr as unknown as number,
       lastCreateTime: historyCursor.value || undefined,
     })
     if (res.data.code === 0) {
@@ -249,7 +256,7 @@ async function loadMoreHistory() {
 async function doDeploy() {
   deploying.value = true
   try {
-    const res = await deployApp({ appId: appIdStr })
+    const res = await deployApp({ appId: appIdStr as unknown as number })
     if (res.data.code === 0) {
       deployedUrl.value = res.data.data || ''
       if (deployedUrl.value) {
@@ -260,6 +267,47 @@ async function doDeploy() {
     }
   } finally {
     deploying.value = false
+  }
+}
+
+async function doDownload() {
+  downloading.value = true
+  try {
+    const res = await downloadAppCode(
+      { appId: appIdStr as unknown as number },
+      { responseType: 'blob' },
+    )
+    const blob: Blob = res.data as Blob
+    // 解析文件名
+    const disposition =
+      (res.headers && (res.headers['content-disposition'] || res.headers['Content-Disposition'])) ||
+      ''
+    let fileName = `app_${appIdStr}.zip`
+    if (disposition) {
+      const match = /filename\*?=(?:UTF-8''|")?([^";]+)/i.exec(disposition)
+      if (match && match[1]) {
+        try {
+          fileName = decodeURIComponent(match[1].replace(/"/g, ''))
+        } catch {
+          fileName = match[1].replace(/"/g, '')
+        }
+        if (!/\.zip$/i.test(fileName)) {
+          fileName = `${fileName}.zip`
+        }
+      }
+    }
+    const url = window.URL.createObjectURL(new Blob([blob], { type: 'application/zip' }))
+    const link = document.createElement('a')
+    link.href = url
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  } catch {
+    message.error('下载失败')
+  } finally {
+    downloading.value = false
   }
 }
 
@@ -290,6 +338,9 @@ async function doDeleteApp() {
       <div class="app-name">{{ app?.appName || '应用对话' }}</div>
       <div class="actions">
         <a-button @click="showInfo = true">应用详情</a-button>
+        <a-button :loading="downloading" @click="doDownload" style="margin-right: 8px"
+          >下载代码</a-button
+        >
         <a-button type="primary" :loading="deploying" @click="doDeploy">部署</a-button>
         <a v-if="deployedUrl" :href="deployedUrl" target="_blank">访问部署地址</a>
       </div>

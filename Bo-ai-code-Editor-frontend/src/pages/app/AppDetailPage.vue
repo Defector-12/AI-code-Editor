@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAppVoById } from '@/api/appController.ts'
 import { getDeployUrl } from '@/env'
+import { CODE_GEN_TYPE_MAP } from '@/constants/codeGenType.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -24,11 +25,20 @@ function openWork() {
   const url = getDeployUrl(key, app.value?.codeGenType as string | undefined)
   window.open(url, '_blank')
 }
+
+const codeGenTypeLabel = computed(() => {
+  const t = app.value?.codeGenType as keyof typeof CODE_GEN_TYPE_MAP | undefined
+  if (!t) return undefined
+  return CODE_GEN_TYPE_MAP[t] || (t as unknown as string)
+})
 </script>
 
 <template>
   <div class="app-detail">
     <a-card :title="app?.appName || '应用详情'">
+      <template #extra>
+        <a-tag v-if="codeGenTypeLabel" color="blue">{{ codeGenTypeLabel }}</a-tag>
+      </template>
       <a-space direction="vertical" style="width: 100%">
         <a-image :src="app?.cover || 'https://via.placeholder.com/1200x600?text=Cover'" />
         <a-descriptions bordered :column="1">
