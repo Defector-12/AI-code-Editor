@@ -634,6 +634,23 @@ function onIframeError(event: Event) {
     <div class="header">
       <div class="app-name">{{ app?.appName || '应用对话' }}</div>
       <div class="actions">
+        <a-tooltip
+          :title="
+            !canEdit
+              ? '只有应用的创建者才能编辑'
+              : !codeStreamDone
+                ? '请先生成或加载代码后再使用编辑功能'
+                : ''
+          "
+        >
+          <a-button
+            style="margin-right: 8px"
+            :disabled="!canEdit || !codeStreamDone"
+            @click="toggleEditingMode"
+          >
+            {{ editingMode ? '退出编辑' : '编辑模式' }}
+          </a-button>
+        </a-tooltip>
         <a-button @click="showInfo = true">应用详情</a-button>
         <a-button :loading="downloading" @click="doDownload" style="margin-right: 8px"
           >下载代码</a-button
@@ -644,21 +661,6 @@ function onIframeError(event: Event) {
     </div>
     <div class="content">
       <div class="left" :class="{ disabled: !canEdit }">
-        <!-- 选中元素信息 Alert -->
-        <div v-if="selectedInfo" style="margin: 8px 8px 0">
-          <a-alert
-            type="info"
-            :message="`已选择元素：${selectedInfo.tagName}${selectedInfo.id ? '#' + selectedInfo.id : ''}${selectedInfo.className ? '.' + String(selectedInfo.className).split(' ').filter(Boolean).join('.') : ''}`"
-            :description="
-              selectedInfo.textSample
-                ? `文本：${selectedInfo.textSample}`
-                : `选择器：${selectedInfo.selector}`
-            "
-            show-icon
-            closable
-            @close="clearSelection"
-          />
-        </div>
         <div class="messages" ref="scrollRef">
           <div class="load-more" v-if="historyHasMore">
             <a-button type="link" size="small" :loading="historyLoading" @click="loadMoreHistory"
@@ -687,6 +689,21 @@ function onIframeError(event: Event) {
             </template>
           </div>
         </div>
+        <!-- 选中元素信息 Alert（移动到输入框上方） -->
+        <div v-if="selectedInfo" class="selection-alert">
+          <a-alert
+            type="info"
+            :message="`已选择元素：${selectedInfo.tagName}${selectedInfo.id ? '#' + selectedInfo.id : ''}${selectedInfo.className ? '.' + String(selectedInfo.className).split(' ').filter(Boolean).join('.') : ''}`"
+            :description="
+              selectedInfo.textSample
+                ? `文本：${selectedInfo.textSample}`
+                : `选择器：${selectedInfo.selector}`
+            "
+            show-icon
+            closable
+            @close="clearSelection"
+          />
+        </div>
         <div class="input">
           <a-tooltip :title="!canEdit ? '无法在别人的作品下对话哦~' : ''">
             <a-textarea
@@ -697,23 +714,6 @@ function onIframeError(event: Event) {
             />
           </a-tooltip>
           <div class="send">
-            <a-tooltip
-              :title="
-                !canEdit
-                  ? '只有应用的创建者才能编辑'
-                  : !codeStreamDone
-                    ? '请先生成或加载代码后再使用编辑功能'
-                    : ''
-              "
-            >
-              <a-button
-                style="margin-right: 8px"
-                :disabled="!canEdit || !codeStreamDone"
-                @click="toggleEditingMode"
-              >
-                {{ editingMode ? '退出编辑' : '编辑模式' }}
-              </a-button>
-            </a-tooltip>
             <a-button type="primary" :disabled="!canEdit" :loading="loading" @click="doSend"
               >发送</a-button
             >
@@ -764,7 +764,7 @@ function onIframeError(event: Event) {
 }
 .content {
   display: grid;
-  grid-template-columns: 2fr 5fr;
+  grid-template-columns: 520px 1fr;
   gap: 8px;
   flex: 1;
   min-height: 0;
@@ -780,6 +780,8 @@ function onIframeError(event: Event) {
   height: 100%;
   min-height: 0;
   max-height: 100%;
+  width: 520px;
+  flex-shrink: 0;
 }
 .messages {
   flex: 1;
@@ -787,7 +789,7 @@ function onIframeError(event: Event) {
   overflow-x: hidden;
   padding: 8px;
   min-height: 0;
-  max-height: calc(100% - 80px);
+  max-height: unset;
 }
 .load-more {
   text-align: center;
@@ -826,8 +828,8 @@ function onIframeError(event: Event) {
   white-space: pre-wrap;
 }
 .bubble.rich pre.code {
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  word-break: normal;
   overflow-x: auto;
   background: #f6f8fa;
   border: 1px solid #f0f0f0;
@@ -836,9 +838,9 @@ function onIframeError(event: Event) {
   max-width: 100%;
 }
 .bubble.rich pre.code code {
-  white-space: pre-wrap;
-  word-break: break-word;
-  overflow-wrap: anywhere;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
 }
 /* highlight.js 基础样式微调 */
 .hljs {
@@ -847,6 +849,7 @@ function onIframeError(event: Event) {
   border-radius: 8px;
   overflow-x: auto;
   max-width: 100%;
+  white-space: pre;
 }
 .msg.user .bubble {
   background: #1677ff;
@@ -880,9 +883,15 @@ function onIframeError(event: Event) {
   height: 100%;
   border: none;
 }
+.selection-alert {
+  margin: 8px 8px 0;
+}
 @media (max-width: 1024px) {
   .content {
     grid-template-columns: 1fr;
+  }
+  .left {
+    width: 100%;
   }
 }
 </style>
