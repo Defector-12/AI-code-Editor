@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, nextTick, computed } from 'vue'
+import { onMounted, onBeforeUnmount, ref, watch, nextTick, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   deployApp,
@@ -16,6 +16,11 @@ import 'highlight.js/styles/github.css'
 import { API_BASE_URL, getStaticPreviewUrl } from '@/env'
 import { useLoginUserStore } from '@/stores/loginUser.ts'
 import AppInfoModal from '@/components/AppInfoModal.vue'
+import {
+  initVisualEditor,
+  type SelectedElementInfo,
+  type VisualEditorHandle,
+} from '@/utils/iframeVisualEditor.ts'
 
 const route = useRoute()
 const router = useRouter()
@@ -56,6 +61,12 @@ const totalHistory = ref(0)
 const autoScroll = ref(true)
 // 使用字符串承载雪花 ID，避免 Number 精度丢失
 
+// 可视化编辑相关状态
+const editingMode = ref(false)
+const selectedInfo = ref<SelectedElementInfo | null>(null)
+const iframeRef = ref<HTMLIFrameElement | null>(null)
+const editorHandle = ref<VisualEditorHandle | null>(null)
+
 const fetchApp = async () => {
   const res = await getAppVoById({ id: appIdStr as unknown as number })
   if (res.data.code === 0) {
@@ -68,21 +79,74 @@ const hasGenDone = () => localStorage.getItem(genDoneKey) === '1'
 const markGenDone = () => localStorage.setItem(genDoneKey, '1')
 
 onMounted(async () => {
+  console.log('AppChatPage onMounted - 开始初始化')
+
   await fetchApp()
+  console.log('应用信息获取完成:', app.value)
+
   await loadInitialHistory()
+  console.log('历史记录加载完成:', {
+    totalHistory: totalHistory.value,
+    messagesLength: messages.value.length,
+  })
+
   // 进入页面时：若历史记录达 2 条或以上，展示网站；否则根据本地标记也可展示
-  if (hasGenDone() || totalHistory.value >= 2) {
+  const genDone = hasGenDone()
+  console.log('检查生成状态:', {
+    genDone,
+    totalHistory: totalHistory.value,
+    shouldShowPreview: genDone || totalHistory.value >= 2,
+  })
+
+  if (genDone || totalHistory.value >= 2) {
     codeStreamDone.value = true
     const codeType = (app.value?.codeGenType as string) || 'html'
     previewUrl.value = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${Date.now()}`
+    console.log('设置预览URL:', previewUrl.value)
+  } else {
+    // 如果有应用信息但没有历史记录，也允许编辑（临时解决方案）
+    if (app.value && app.value.id) {
+      console.log('无历史记录但应用存在，允许编辑')
+      codeStreamDone.value = true
+      const codeType = (app.value?.codeGenType as string) || 'html'
+      previewUrl.value = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${Date.now()}`
+      console.log('设置预览URL (无历史):', previewUrl.value)
+    }
   }
+
+  console.log('最终状态:', {
+    codeStreamDone: codeStreamDone.value,
+    canEdit: canEdit.value,
+    previewUrl: previewUrl.value,
+  })
+
   // 自动发送初始消息：仅当自己的应用且没有对话历史
   if (messages.value.length === 0 && canEdit.value) {
     const init = app.value?.initPrompt || ''
     if (init) {
+      console.log('发送初始提示:', init)
       inputText.value = init
       await doSend()
     }
+  }
+})
+
+// 监听来自预览 iframe 的 postMessage（冗余兜底）
+function onWindowMessage(ev: MessageEvent) {
+  const data = ev?.data
+  if (data && data.type === 'visual-editor:selected') {
+    selectedInfo.value = data.payload || null
+  }
+}
+window.addEventListener('message', onWindowMessage)
+
+onBeforeUnmount(() => {
+  try {
+    window.removeEventListener('message', onWindowMessage)
+  } catch {}
+  if (editorHandle.value) {
+    editorHandle.value.destroy()
+    editorHandle.value = null
   }
 })
 
@@ -94,11 +158,27 @@ watch(messages, async () => {
   }
 })
 
+// 监听预览URL变化，确保iframe及时更新
+watch(previewUrl, (newUrl) => {
+  console.log('预览URL发生变化:', newUrl)
+  if (newUrl && iframeRef.value) {
+    console.log('立即更新iframe src')
+    iframeRef.value.src = newUrl
+  }
+})
+
 const loginUserStore = useLoginUserStore()
 const canEdit = computed(() => {
   const uid = app.value?.userId
   const me = loginUserStore.loginUser?.id
-  return !!uid && !!me && uid === me
+  const result = !!uid && !!me && uid === me
+  console.log('canEdit computed:', {
+    uid,
+    me,
+    result,
+    app: app.value,
+  })
+  return result
 })
 
 async function doSend() {
@@ -108,7 +188,8 @@ async function doSend() {
     message.warning('无法在别人的作品下对话哦~')
     return
   }
-  messages.value.push({ role: 'user', content: text })
+  const finalText = buildPromptWithSelection(text, selectedInfo.value)
+  messages.value.push({ role: 'user', content: finalText })
   inputText.value = ''
   // SSE
   loading.value = true
@@ -118,16 +199,20 @@ async function doSend() {
   try {
     // 统一走环境变量域名
     const apiBase = (API_BASE_URL || '/api').replace(/\/$/, '')
-    const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdStr)}&message=${encodeURIComponent(text)}`
+    const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdStr)}&message=${encodeURIComponent(finalText)}`
     const es = new EventSource(url, { withCredentials: true })
     es.onmessage = (ev) => {
       // 处理多种结尾标识
       const data = ev.data
+      console.log('SSE 收到数据:', data)
+
       if (data === '[DONE]' || data === 'DONE' || data === 'end') {
+        console.log('SSE 结束标识收到，关闭连接')
         es.close()
         finalizeAfterStream(aiMsgIndex)
         return
       }
+
       // 某些后端以 JSON 包裹内容，尝试解包常见字段
       let chunk = data
       try {
@@ -137,15 +222,31 @@ async function doSend() {
         else if (typeof obj?.data === 'string') chunk = obj.data
         else if (typeof obj?.content === 'string') chunk = obj.content
         else if (typeof obj?.text === 'string') chunk = obj.text
+        else {
+          console.log('JSON解析成功但未找到文本字段:', obj)
+        }
       } catch {
         // 非 JSON，直接使用
+        console.log('非JSON格式，直接使用:', data)
       }
-      messages.value[aiMsgIndex].content += chunk
+
+      if (chunk && chunk.trim()) {
+        console.log('追加chunk到消息:', chunk)
+        messages.value[aiMsgIndex].content += chunk
+      }
     }
-    es.onerror = () => {
+    es.onerror = (error) => {
+      console.error('SSE 连接错误:', error)
+      console.log('当前消息内容长度:', messages.value[aiMsgIndex]?.content?.length || 0)
       es.close()
       finalizeAfterStream(aiMsgIndex)
     }
+    // 发送后按要求退出编辑模式并清理选择
+    clearSelection()
+    if (editorHandle.value) {
+      editorHandle.value.disable()
+    }
+    editingMode.value = false
   } catch {
     loading.value = false
   }
@@ -156,19 +257,48 @@ function finalizeAfterStream(aiMsgIndex: number) {
   codeStreamDone.value = true
   // 解析 AI 文本为可读片段（文本 + 代码块）
   const full = messages.value[aiMsgIndex]?.content || ''
-  messages.value[aiMsgIndex].pieces = buildPiecesFromContent(full)
+  console.log('AI 响应内容:', full)
+
+  // 确保内容被正确解析和显示
+  if (full.trim()) {
+    messages.value[aiMsgIndex].pieces = buildPiecesFromContent(full)
+    console.log('解析后的pieces:', messages.value[aiMsgIndex].pieces)
+  }
+
   // 标记当前应用已完成一次生成，防止刷新后再次自动触发
   markGenDone()
+
   // 刷新应用信息以拿到最新 codeGenType / 目录
   fetchApp().then(() => {
     const codeType = (app.value?.codeGenType as string) || 'html'
-    // 加时间戳防缓存
-    previewUrl.value = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${Date.now()}`
+    // 加时间戳防缓存，确保预览更新
+    const timestamp = Date.now()
+    const newPreviewUrl = `${getStaticPreviewUrl(codeType, appIdStr)}?t=${timestamp}`
+    console.log('更新预览URL:', newPreviewUrl)
+    previewUrl.value = newPreviewUrl
+
+    // 强制刷新iframe以显示最新内容
+    if (iframeRef.value) {
+      console.log('强制刷新iframe')
+      // 延迟一点确保后端文件已生成
+      setTimeout(() => {
+        if (iframeRef.value) {
+          iframeRef.value.src = newPreviewUrl
+        }
+      }, 500)
+    }
   })
 }
 
 function buildPiecesFromContent(content: string): MsgPiece[] {
   const pieces: MsgPiece[] = []
+
+  // 如果内容为空，返回空数组
+  if (!content || !content.trim()) {
+    console.log('内容为空，返回空pieces')
+    return pieces
+  }
+
   // 先按 Markdown 代码块切分
   const regex = /```(\w+)?\n([\s\S]*?)```/g
   let lastIndex = 0
@@ -176,14 +306,21 @@ function buildPiecesFromContent(content: string): MsgPiece[] {
   while ((match = regex.exec(content))) {
     const [block, lang, code] = match
     if (match.index > lastIndex) {
-      pieces.push({ type: 'text', content: content.slice(lastIndex, match.index) })
+      const textContent = content.slice(lastIndex, match.index).trim()
+      if (textContent) {
+        pieces.push({ type: 'text', content: textContent })
+      }
     }
     pieces.push({ type: 'code', content: code, lang: lang || undefined })
     lastIndex = match.index + block.length
   }
   if (lastIndex < content.length) {
-    pieces.push({ type: 'text', content: content.slice(lastIndex) })
+    const remainingContent = content.slice(lastIndex).trim()
+    if (remainingContent) {
+      pieces.push({ type: 'text', content: remainingContent })
+    }
   }
+
   // 如果没有 Markdown 代码块，但内容包含完整 HTML，则整体当代码展示
   if (pieces.length === 1 && pieces[0].type === 'text') {
     const t = pieces[0].content
@@ -191,6 +328,19 @@ function buildPiecesFromContent(content: string): MsgPiece[] {
       return [{ type: 'code', content: t, lang: 'html' }]
     }
   }
+
+  // 如果没有找到任何pieces，但有内容，则作为普通文本处理
+  if (pieces.length === 0 && content.trim()) {
+    console.log('未找到代码块，作为普通文本处理')
+    pieces.push({ type: 'text', content: content.trim() })
+  }
+
+  console.log('buildPiecesFromContent 结果:', {
+    originalContent: content,
+    piecesCount: pieces.length,
+    pieces: pieces.map((p) => ({ type: p.type, contentLength: p.content?.length || 0 })),
+  })
+
   return pieces
 }
 
@@ -222,6 +372,8 @@ async function loadInitialHistory() {
       historyHasMore.value = (page?.totalRow || 0) > (page?.records?.length || 0)
       historyCursor.value = asc[0]?.createTime
     }
+  } catch (error) {
+    console.error('loadInitialHistory error:', error)
   } finally {
     historyLoading.value = false
   }
@@ -330,6 +482,151 @@ async function doDeleteApp() {
     message.error('删除失败：' + res.data.message)
   }
 }
+
+// 预览 iframe 加载完成时，初始化可视化编辑桥接
+function onIframeLoad() {
+  console.log('iframe onLoad triggered', {
+    iframeRef: iframeRef.value,
+    previewUrl: previewUrl.value,
+    editingMode: editingMode.value,
+  })
+
+  if (!iframeRef.value) {
+    console.log('iframeRef 不存在，无法初始化编辑器')
+    return
+  }
+
+  // 检查iframe是否成功加载内容
+  try {
+    const iframeWindow = iframeRef.value.contentWindow
+    const iframeDocument = iframeWindow?.document
+
+    console.log('iframe 内容检查:', {
+      contentWindow: iframeWindow,
+      document: iframeDocument,
+      readyState: iframeDocument?.readyState,
+      location: iframeWindow?.location?.href,
+    })
+
+    if (!iframeWindow || !iframeDocument) {
+      console.error('无法访问 iframe 内容，可能存在跨域问题')
+      return
+    }
+  } catch (error) {
+    console.error('访问 iframe 内容时出错:', error)
+    return
+  }
+
+  // 销毁旧的（如果有）
+  if (editorHandle.value) {
+    try {
+      editorHandle.value.destroy()
+    } catch (error) {
+      console.error('销毁旧编辑器时出错:', error)
+    }
+    editorHandle.value = null
+  }
+
+  try {
+    editorHandle.value = initVisualEditor({
+      iframe: iframeRef.value,
+      onSelectedChange: (info) => {
+        console.log('选中元素变化:', info)
+        selectedInfo.value = info
+      },
+      highlightColors: { hover: '#1677ff', active: '#fa541c' },
+    })
+
+    console.log('Visual editor initialized successfully:', editorHandle.value)
+
+    if (editingMode.value && editorHandle.value) {
+      console.log('启用编辑模式')
+      editorHandle.value.enable()
+    } else if (editorHandle.value) {
+      console.log('禁用编辑模式')
+      editorHandle.value.disable()
+    }
+  } catch (error) {
+    console.error('初始化可视化编辑器时出错:', error)
+  }
+}
+
+// 根据编辑模式切换启用/禁用
+watch(editingMode, (val) => {
+  console.log('editingMode watcher triggered:', {
+    val,
+    editorHandle: editorHandle.value,
+  })
+
+  if (!editorHandle.value) {
+    console.log('editorHandle 不存在，无法切换编辑模式')
+    return
+  }
+
+  if (val) {
+    console.log('通过 watcher 启用编辑模式')
+    editorHandle.value.enable()
+  } else {
+    console.log('通过 watcher 禁用编辑模式')
+    editorHandle.value.disable()
+  }
+})
+
+function clearSelection() {
+  selectedInfo.value = null
+  if (editorHandle.value) {
+    editorHandle.value.clearSelection()
+  }
+}
+
+function toggleEditingMode() {
+  console.log('toggleEditingMode called', {
+    canEdit: canEdit.value,
+    codeStreamDone: codeStreamDone.value,
+    editingMode: editingMode.value,
+    previewUrl: previewUrl.value,
+    app: app.value,
+    editorHandle: editorHandle.value,
+  })
+
+  if (!canEdit.value || !codeStreamDone.value) {
+    console.log('编辑模式被阻止:', {
+      canEdit: canEdit.value,
+      codeStreamDone: codeStreamDone.value,
+    })
+    return
+  }
+
+  editingMode.value = !editingMode.value
+  console.log('编辑模式切换为:', editingMode.value)
+}
+
+function buildPromptWithSelection(text: string, info: SelectedElementInfo | null): string {
+  if (!info) return text
+  const lines: string[] = []
+  lines.push('')
+  lines.push('[所选网页元素]')
+  lines.push(`selector: ${info.selector}`)
+  lines.push(`tagName: ${info.tagName}`)
+  if (info.id) lines.push(`id: ${info.id}`)
+  if (info.className) lines.push(`class: ${info.className}`)
+  if (info.textSample) lines.push(`text: ${info.textSample}`)
+  return text + '\n' + lines.join('\n')
+}
+
+// iframe错误处理
+function onIframeError(event: Event) {
+  console.error('iframe 加载错误:', event)
+  console.log('当前预览URL:', previewUrl.value)
+
+  // 错误时尝试重新加载
+  setTimeout(() => {
+    if (iframeRef.value && previewUrl.value) {
+      console.log('重试加载iframe:', previewUrl.value)
+      iframeRef.value.src = previewUrl.value
+    }
+  }, 1000)
+}
 </script>
 
 <template>
@@ -347,6 +644,21 @@ async function doDeleteApp() {
     </div>
     <div class="content">
       <div class="left" :class="{ disabled: !canEdit }">
+        <!-- 选中元素信息 Alert -->
+        <div v-if="selectedInfo" style="margin: 8px 8px 0">
+          <a-alert
+            type="info"
+            :message="`已选择元素：${selectedInfo.tagName}${selectedInfo.id ? '#' + selectedInfo.id : ''}${selectedInfo.className ? '.' + String(selectedInfo.className).split(' ').filter(Boolean).join('.') : ''}`"
+            :description="
+              selectedInfo.textSample
+                ? `文本：${selectedInfo.textSample}`
+                : `选择器：${selectedInfo.selector}`
+            "
+            show-icon
+            closable
+            @close="clearSelection"
+          />
+        </div>
         <div class="messages" ref="scrollRef">
           <div class="load-more" v-if="historyHasMore">
             <a-button type="link" size="small" :loading="historyLoading" @click="loadMoreHistory"
@@ -385,6 +697,23 @@ async function doDeleteApp() {
             />
           </a-tooltip>
           <div class="send">
+            <a-tooltip
+              :title="
+                !canEdit
+                  ? '只有应用的创建者才能编辑'
+                  : !codeStreamDone
+                    ? '请先生成或加载代码后再使用编辑功能'
+                    : ''
+              "
+            >
+              <a-button
+                style="margin-right: 8px"
+                :disabled="!canEdit || !codeStreamDone"
+                @click="toggleEditingMode"
+              >
+                {{ editingMode ? '退出编辑' : '编辑模式' }}
+              </a-button>
+            </a-tooltip>
             <a-button type="primary" :disabled="!canEdit" :loading="loading" @click="doSend"
               >发送</a-button
             >
@@ -393,7 +722,13 @@ async function doDeleteApp() {
       </div>
       <div class="right">
         <div v-if="codeStreamDone" class="preview">
-          <iframe :src="previewUrl" frameborder="0" />
+          <iframe
+            :src="previewUrl"
+            frameborder="0"
+            ref="iframeRef"
+            @load="onIframeLoad"
+            @error="onIframeError"
+          />
         </div>
         <a-empty v-else description="聊天生成完成或历史达到 2 条后展示预览" />
       </div>
@@ -411,9 +746,11 @@ async function doDeleteApp() {
 
 <style scoped>
 .chat-page {
-  max-width: 1100px;
-  margin: 0 auto;
+  width: 100%;
   overflow-x: hidden;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
 }
 .header {
   display: flex;
@@ -427,8 +764,12 @@ async function doDeleteApp() {
 }
 .content {
   display: grid;
-  grid-template-columns: 2fr 3fr;
+  grid-template-columns: 2fr 5fr;
   gap: 8px;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  height: 100%;
 }
 .left {
   background: #fff;
@@ -436,13 +777,17 @@ async function doDeleteApp() {
   padding: 8px 12px;
   display: flex;
   flex-direction: column;
-  min-height: 70vh;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
 }
 .messages {
   flex: 1;
   overflow: auto;
   overflow-x: hidden;
   padding: 8px;
+  min-height: 0;
+  max-height: calc(100% - 80px);
 }
 .load-more {
   text-align: center;
@@ -509,6 +854,7 @@ async function doDeleteApp() {
 }
 .input {
   margin-top: 8px;
+  flex-shrink: 0;
 }
 .send {
   text-align: right;
@@ -518,12 +864,16 @@ async function doDeleteApp() {
   background: #fff;
   border-radius: 8px;
   padding: 8px 12px;
-  overflow-x: hidden;
+  overflow: hidden;
+  height: 100%;
+  min-height: 0;
+  max-height: 100%;
 }
 .preview {
   width: 100%;
-  height: 64vh;
+  height: 100%;
   overflow: hidden;
+  min-height: 0;
 }
 .preview iframe {
   width: 100%;

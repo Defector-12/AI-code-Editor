@@ -21,8 +21,11 @@ export function getDeployUrl(deployKey: string, codeGenType?: string) {
 }
 
 export function getStaticPreviewUrl(codeGenType: string, appId: string | number) {
-  const host = (VITE_STATIC_HOST || 'http://localhost:8123').replace(/\/$/, '')
-  const base = `${host}/api/static/${codeGenType}_${appId}`
+  // 为了让 iframe 与前端同源，默认走相对路径，由 Vite 代理到后端。
+  // 若显式配置了 VITE_STATIC_HOST（例如部署环境），则拼接为 {host}/api/static/...
+  const host = (VITE_STATIC_HOST || '').replace(/\/$/, '')
+  const basePrefix = host ? `${host}/api` : '/api'
+  const base = `${basePrefix}/static/${codeGenType}_${appId}`
   if ((codeGenType || '').toLowerCase() === 'vue_project') {
     return `${base}/dist/index.html`
   }
