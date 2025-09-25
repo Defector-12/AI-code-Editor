@@ -3,7 +3,6 @@ package com.bjh.boaicodeeditor.controller;
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONUtil;
-import com.bjh.boaicodeeditor.ai.AiCodeGenTypeRoutingService;
 import com.bjh.boaicodeeditor.annotation.AuthCheck;
 import com.bjh.boaicodeeditor.common.BaseResponse;
 import com.bjh.boaicodeeditor.common.DeleteRequest;
@@ -14,9 +13,10 @@ import com.bjh.boaicodeeditor.exception.BusinessException;
 import com.bjh.boaicodeeditor.exception.ErrorCode;
 import com.bjh.boaicodeeditor.exception.ThrowUtils;
 import com.bjh.boaicodeeditor.model.dto.app.*;
+import com.bjh.boaicodeeditor.model.entity.App;
 import com.bjh.boaicodeeditor.model.entity.User;
-import com.bjh.boaicodeeditor.model.enums.CodeGenTypeEnum;
 import com.bjh.boaicodeeditor.model.vo.AppVO;
+import com.bjh.boaicodeeditor.service.AppService;
 import com.bjh.boaicodeeditor.service.ProjectDownloadService;
 import com.bjh.boaicodeeditor.service.UserService;
 import com.mybatisflex.core.paginate.Page;
@@ -27,8 +27,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.http.MediaType;
 import org.springframework.http.codec.ServerSentEvent;
 import org.springframework.web.bind.annotation.*;
-import com.bjh.boaicodeeditor.model.entity.App;
-import com.bjh.boaicodeeditor.service.AppService;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -55,8 +53,6 @@ public class AppController {
     @Resource
     private ProjectDownloadService projectDownloadService;
 
-    @Resource
-    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
 
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> chatToGenCsode(@RequestParam Long appId,

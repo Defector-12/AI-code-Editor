@@ -6,6 +6,7 @@ import cn.hutool.core.io.FileUtil;
 import cn.hutool.core.util.RandomUtil;
 import cn.hutool.core.util.StrUtil;
 import com.bjh.boaicodeeditor.ai.AiCodeGenTypeRoutingService;
+import com.bjh.boaicodeeditor.ai.AiCodeGenTypeRoutingServiceFactory;
 import com.bjh.boaicodeeditor.constant.AppConstant;
 import com.bjh.boaicodeeditor.core.AiCodeGeneratorFacade;
 import com.bjh.boaicodeeditor.core.builder.VueProjectBuilder;
@@ -13,21 +14,21 @@ import com.bjh.boaicodeeditor.core.handler.StreamHandlerExecutor;
 import com.bjh.boaicodeeditor.exception.BusinessException;
 import com.bjh.boaicodeeditor.exception.ErrorCode;
 import com.bjh.boaicodeeditor.exception.ThrowUtils;
+import com.bjh.boaicodeeditor.mapper.AppMapper;
 import com.bjh.boaicodeeditor.model.dto.app.AppAddRequest;
 import com.bjh.boaicodeeditor.model.dto.app.AppQueryRequest;
+import com.bjh.boaicodeeditor.model.entity.App;
 import com.bjh.boaicodeeditor.model.entity.User;
 import com.bjh.boaicodeeditor.model.enums.ChatHistoryMessageTypeEnum;
 import com.bjh.boaicodeeditor.model.enums.CodeGenTypeEnum;
 import com.bjh.boaicodeeditor.model.vo.AppVO;
 import com.bjh.boaicodeeditor.model.vo.UserVO;
+import com.bjh.boaicodeeditor.service.AppService;
 import com.bjh.boaicodeeditor.service.ChatHistoryService;
 import com.bjh.boaicodeeditor.service.ScreenshotService;
 import com.bjh.boaicodeeditor.service.UserService;
 import com.mybatisflex.core.query.QueryWrapper;
 import com.mybatisflex.spring.service.impl.ServiceImpl;
-import com.bjh.boaicodeeditor.model.entity.App;
-import com.bjh.boaicodeeditor.mapper.AppMapper;
-import com.bjh.boaicodeeditor.service.AppService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -70,7 +71,7 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
     private ScreenshotService screenshotService;
 
     @Resource
-    private AiCodeGenTypeRoutingService aiCodeGenTypeRoutingService;
+    private AiCodeGenTypeRoutingServiceFactory aiCodeGenTypeRoutingServiceFactory;
 
     @Override
     public Flux<String> chatToGenCode(Long appId, String message, User loginUser) {
@@ -110,8 +111,9 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         app.setUserId(loginUser.getId());
         // 应用名称暂时为 initPrompt 前 12 位
         app.setAppName(initPrompt.substring(0, Math.min(initPrompt.length(), 12)));
-        // 使用 AI 智能选择代码生成类型
-        CodeGenTypeEnum selectedCodeGenType = aiCodeGenTypeRoutingService.routeCodeGenType(initPrompt);
+        // 使用 AI 智能选择代码生成类型（多例模式）
+        AiCodeGenTypeRoutingService routingService = aiCodeGenTypeRoutingServiceFactory.createAiCodeGenTypeRoutingService();
+        CodeGenTypeEnum selectedCodeGenType = routingService.routeCodeGenType(initPrompt);
         app.setCodeGenType(selectedCodeGenType.getValue());
         // 插入数据库
         boolean result = this.save(app);
