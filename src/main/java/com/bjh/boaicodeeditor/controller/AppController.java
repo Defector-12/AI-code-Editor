@@ -16,6 +16,8 @@ import com.bjh.boaicodeeditor.model.dto.app.*;
 import com.bjh.boaicodeeditor.model.entity.App;
 import com.bjh.boaicodeeditor.model.entity.User;
 import com.bjh.boaicodeeditor.model.vo.AppVO;
+import com.bjh.boaicodeeditor.rateLimiter.annotation.RateLimit;
+import com.bjh.boaicodeeditor.rateLimiter.enums.RateLimitType;
 import com.bjh.boaicodeeditor.service.AppService;
 import com.bjh.boaicodeeditor.service.ProjectDownloadService;
 import com.bjh.boaicodeeditor.service.UserService;
@@ -56,6 +58,7 @@ public class AppController {
 
 
     @GetMapping(value = "/chat/gen/code", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    @RateLimit(limitType = RateLimitType.USER, rate = 5, rateInterval = 60, message = "AI 对话请求过于频繁，请稍后再试")
     public Flux<ServerSentEvent<String>> chatToGenCsode(@RequestParam Long appId,
                                                         @RequestParam String message,
                                                         HttpServletRequest request) {

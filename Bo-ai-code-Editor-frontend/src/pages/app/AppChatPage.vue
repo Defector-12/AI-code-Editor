@@ -201,14 +201,59 @@ async function doSend() {
     const apiBase = (API_BASE_URL || '/api').replace(/\/$/, '')
     const url = `${apiBase}/app/chat/gen/code?appId=${encodeURIComponent(appIdStr)}&message=${encodeURIComponent(finalText)}`
     const es = new EventSource(url, { withCredentials: true })
+    let streamClosed = false
+    let hasBusinessError = false
+
+    const closeStream = () => {
+      if (!streamClosed) {
+        es.close()
+        streamClosed = true
+      }
+    }
+
+    const handleBusinessErrorEvent = (event: MessageEvent) => {
+      if (streamClosed) return
+      hasBusinessError = true
+      closeStream()
+
+      let errorMessage = '生成过程中出现错误'
+      try {
+        const errorData = JSON.parse(event.data || '{}')
+        console.error('SSE业务错误事件:', errorData)
+        if (errorData?.message) {
+          errorMessage = errorData.message
+        }
+      } catch (parseError) {
+        console.error('解析业务错误事件失败:', parseError, '原始数据:', event.data)
+      }
+
+      if (messages.value[aiMsgIndex]) {
+        messages.value[aiMsgIndex].content = `❌ ${errorMessage}`
+        messages.value[aiMsgIndex].pieces = [{ type: 'text', content: `❌ ${errorMessage}` }]
+      }
+
+      loading.value = false
+      codeStreamDone.value = true
+      message.error(errorMessage)
+    }
+
+    es.addEventListener('business-error', handleBusinessErrorEvent)
+    es.addEventListener('done', () => {
+      if (streamClosed || hasBusinessError) return
+      console.log('SSE done事件收到，关闭连接')
+      closeStream()
+      finalizeAfterStream(aiMsgIndex)
+    })
+
     es.onmessage = (ev) => {
+      if (streamClosed || hasBusinessError) return
       // 处理多种结尾标识
       const data = ev.data
       console.log('SSE 收到数据:', data)
 
       if (data === '[DONE]' || data === 'DONE' || data === 'end') {
         console.log('SSE 结束标识收到，关闭连接')
-        es.close()
+        closeStream()
         finalizeAfterStream(aiMsgIndex)
         return
       }
@@ -236,10 +281,13 @@ async function doSend() {
       }
     }
     es.onerror = (error) => {
+      if (streamClosed) return
       console.error('SSE 连接错误:', error)
       console.log('当前消息内容长度:', messages.value[aiMsgIndex]?.content?.length || 0)
-      es.close()
-      finalizeAfterStream(aiMsgIndex)
+      closeStream()
+      if (!hasBusinessError) {
+        finalizeAfterStream(aiMsgIndex)
+      }
     }
     // 发送后按要求退出编辑模式并清理选择
     clearSelection()
