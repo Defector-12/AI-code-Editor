@@ -11,8 +11,16 @@ import {
 import { listAppChatHistory } from '@/api/chatHistoryController.ts'
 import { message } from 'ant-design-vue'
 import MarkdownIt from 'markdown-it'
-import hljs from 'highlight.js'
-import 'highlight.js/styles/github.css'
+import hljs from 'highlight.js/lib/core'
+import javascript from 'highlight.js/lib/languages/javascript'
+import typescript from 'highlight.js/lib/languages/typescript'
+import python from 'highlight.js/lib/languages/python'
+import json from 'highlight.js/lib/languages/json'
+import xml from 'highlight.js/lib/languages/xml'
+import cssLang from 'highlight.js/lib/languages/css'
+import shell from 'highlight.js/lib/languages/shell'
+import markdown from 'highlight.js/lib/languages/markdown'
+import 'highlight.js/styles/github-dark.css'
 import { API_BASE_URL, getStaticPreviewUrl } from '@/env'
 import { useLoginUserStore } from '@/stores/loginUser.ts'
 import AppInfoModal from '@/components/AppInfoModal.vue'
@@ -78,6 +86,23 @@ const genDoneKey = `appGenDone:${appIdStr}`
 const hasGenDone = () => localStorage.getItem(genDoneKey) === '1'
 const markGenDone = () => localStorage.setItem(genDoneKey, '1')
 
+hljs.registerLanguage('javascript', javascript)
+hljs.registerLanguage('typescript', typescript)
+hljs.registerLanguage('python', python)
+hljs.registerLanguage('json', json)
+hljs.registerLanguage('xml', xml)
+hljs.registerLanguage('css', cssLang)
+hljs.registerLanguage('shell', shell)
+hljs.registerLanguage('markdown', markdown)
+
+const highlightMessages = () => {
+  requestAnimationFrame(() => {
+    document
+      .querySelectorAll('.chat-page pre code')
+      .forEach((block) => hljs.highlightElement(block as HTMLElement))
+  })
+}
+
 onMounted(async () => {
   console.log('AppChatPage onMounted - 开始初始化')
 
@@ -85,6 +110,7 @@ onMounted(async () => {
   console.log('应用信息获取完成:', app.value)
 
   await loadInitialHistory()
+  highlightMessages()
   console.log('历史记录加载完成:', {
     totalHistory: totalHistory.value,
     messagesLength: messages.value.length,
@@ -153,6 +179,7 @@ onBeforeUnmount(() => {
 const scrollRef = ref<HTMLDivElement | null>(null)
 watch(messages, async () => {
   await nextTick()
+  highlightMessages()
   if (autoScroll.value && scrollRef.value) {
     scrollRef.value.scrollTop = scrollRef.value.scrollHeight
   }
@@ -165,6 +192,7 @@ watch(previewUrl, (newUrl) => {
     console.log('立即更新iframe src')
     iframeRef.value.src = newUrl
   }
+  highlightMessages()
 })
 
 const loginUserStore = useLoginUserStore()
@@ -679,7 +707,7 @@ function onIframeError(event: Event) {
 
 <template>
   <div class="chat-page">
-    <div class="header">
+    <div class="header glass-surface">
       <div class="app-name">{{ app?.appName || '应用对话' }}</div>
       <div class="actions">
         <a-tooltip
@@ -708,7 +736,7 @@ function onIframeError(event: Event) {
       </div>
     </div>
     <div class="content">
-      <div class="left" :class="{ disabled: !canEdit }">
+      <div class="left glass-panel" :class="{ disabled: !canEdit }">
         <div class="messages" ref="scrollRef">
           <div class="load-more" v-if="historyHasMore">
             <a-button type="link" size="small" :loading="historyLoading" @click="loadMoreHistory"
@@ -723,13 +751,12 @@ function onIframeError(event: Event) {
                     <div v-if="p.type === 'text'" class="text" v-html="md.render(p.content)"></div>
                     <div
                       v-else
+                      class="code-block"
                       v-html="md.render('```' + (p.lang || '') + '\n' + p.content + '\n```')"
                     ></div>
                   </template>
                 </template>
-                <template v-else>
-                  <div v-html="md.render(m.content)"></div>
-                </template>
+                <div v-else class="text" v-html="md.render(m.content)"></div>
               </div>
             </template>
             <template v-else>
@@ -768,7 +795,7 @@ function onIframeError(event: Event) {
           </div>
         </div>
       </div>
-      <div class="right">
+      <div class="right glass-panel">
         <div v-if="codeStreamDone" class="preview">
           <iframe
             :src="previewUrl"
@@ -799,30 +826,55 @@ function onIframeError(event: Event) {
   height: 100vh;
   display: flex;
   flex-direction: column;
+  gap: 18px;
+  padding-bottom: 24px;
 }
+
 .header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin: 8px 0 12px;
+  margin: 8px 0 0;
+  padding: 16px 20px;
+  border-radius: 18px;
+  border: 1px solid var(--surface-border);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
 }
+
 .app-name {
   font-weight: 600;
-  font-size: 18px;
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  color: var(--accent-strong);
 }
+
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
 .content {
   display: grid;
   grid-template-columns: 520px 1fr;
-  gap: 8px;
+  gap: 18px;
   flex: 1;
   min-height: 0;
   overflow: hidden;
   height: 100%;
 }
+
+.glass-panel {
+  background: rgba(21, 11, 33, 0.68);
+  border-radius: 18px;
+  border: 1px solid rgba(177, 140, 255, 0.16);
+  backdrop-filter: blur(calc(var(--blur-strength) * 0.9));
+  box-shadow: var(--shadow-card);
+}
+
 .left {
-  background: #fff;
-  border-radius: 8px;
-  padding: 8px 12px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -831,6 +883,7 @@ function onIframeError(event: Event) {
   width: 520px;
   flex-shrink: 0;
 }
+
 .messages {
   flex: 1;
   overflow: auto;
@@ -838,108 +891,222 @@ function onIframeError(event: Event) {
   padding: 8px;
   min-height: 0;
   max-height: unset;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
 .load-more {
   text-align: center;
   margin-bottom: 8px;
 }
+
 .msg {
   display: flex;
-  margin-bottom: 8px;
 }
+
 .msg.user {
   justify-content: flex-end;
 }
+
 .bubble {
-  background: #f5f5f5;
-  padding: 8px 12px;
-  border-radius: 8px;
-  max-width: 70%;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 10px 14px;
+  border-radius: 14px;
+  max-width: 76%;
+  backdrop-filter: blur(calc(var(--blur-strength) * 0.6));
+  border: 1px solid rgba(177, 140, 255, 0.16);
+  color: var(--text-secondary);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
+
+.msg.user .bubble {
+  background: linear-gradient(135deg, rgba(143, 110, 227, 0.75) 0%, rgba(99, 70, 186, 0.85) 100%);
+  color: #f6f3ff;
+  border: 1px solid rgba(211, 189, 255, 0.45);
+  box-shadow: 0 12px 24px rgba(66, 40, 134, 0.55);
+}
+
 .bubble.rich {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+
 .bubble.rich img {
   max-width: 100%;
   height: auto;
+  border-radius: 12px;
 }
+
 .bubble.rich table {
   display: block;
   max-width: 100%;
   overflow-x: auto;
 }
+
 .bubble.rich * {
   box-sizing: border-box;
 }
+
 .bubble.rich .text {
   white-space: pre-wrap;
 }
-.bubble.rich pre.code {
-  white-space: pre;
-  word-break: normal;
-  overflow-x: auto;
-  background: #f6f8fa;
-  border: 1px solid #f0f0f0;
-  padding: 12px;
-  border-radius: 8px;
-  max-width: 100%;
-}
-.bubble.rich pre.code code {
-  white-space: pre;
-  word-break: normal;
-  overflow-wrap: normal;
-}
-/* highlight.js 基础样式微调 */
+
 .hljs {
-  background: #f6f8fa;
-  padding: 12px;
-  border-radius: 8px;
+  background: rgba(12, 6, 26, 0.85);
+  padding: 14px;
+  border-radius: 12px;
   overflow-x: auto;
   max-width: 100%;
   white-space: pre;
+  border: 1px solid rgba(177, 140, 255, 0.14);
 }
-.msg.user .bubble {
-  background: #1677ff;
-  color: #fff;
+
+.hljs::-webkit-scrollbar {
+  height: 6px;
 }
+
+:deep(.bubble.rich > *:last-child) {
+  margin-bottom: 0;
+}
+
+:deep(.bubble.rich > *) {
+  margin-bottom: 16px;
+}
+
+:deep(.bubble .text p),
+:deep(.bubble .text ul),
+:deep(.bubble .text ol),
+:deep(.bubble .text li),
+:deep(.bubble .text h1),
+:deep(.bubble .text h2),
+:deep(.bubble .text h3),
+:deep(.bubble .text h4),
+:deep(.bubble .text h5),
+:deep(.bubble .text h6) {
+  color: var(--text-secondary);
+  margin: 0 0 10px;
+}
+
+:deep(.bubble .text h1),
+:deep(.bubble .text h2),
+:deep(.bubble .text h3) {
+  color: var(--accent-strong);
+  font-weight: 600;
+}
+
+:deep(.bubble .text strong) {
+  color: var(--accent-strong);
+}
+
+:deep(.bubble .text code) {
+  background: rgba(177, 140, 255, 0.12);
+  padding: 0 6px;
+  border-radius: 6px;
+  color: var(--accent-strong);
+  font-family:
+    'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+:deep(.bubble .text a) {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
+:deep(.bubble .text ul) {
+  padding-left: 20px;
+}
+
+:deep(.bubble .code-block pre) {
+  margin: 0;
+  background: rgba(12, 6, 26, 0.85);
+  border-radius: 12px;
+  border: 1px solid rgba(177, 140, 255, 0.14);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+:deep(.bubble .code-block pre code) {
+  font-family:
+    'Fira Code', 'JetBrains Mono', 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
 .input {
-  margin-top: 8px;
+  margin-top: 12px;
   flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
+
 .send {
   text-align: right;
-  margin-top: 8px;
 }
+
 .right {
-  background: #fff;
-  border-radius: 8px;
-  padding: 8px 12px;
+  padding: 12px 16px;
   overflow: hidden;
   height: 100%;
   min-height: 0;
   max-height: 100%;
+  position: relative;
 }
+
 .preview {
   width: 100%;
   height: 100%;
   overflow: hidden;
-  min-height: 0;
+  border-radius: 14px;
+  border: 1px solid rgba(177, 140, 255, 0.14);
 }
+
 .preview iframe {
   width: 100%;
   height: 100%;
   border: none;
+  border-radius: 14px;
+  background: rgba(13, 6, 27, 0.65);
 }
+
 .selection-alert {
-  margin: 8px 8px 0;
+  margin: 8px;
 }
-@media (max-width: 1024px) {
+
+.left.disabled {
+  opacity: 0.7;
+}
+
+:deep(.ant-alert) {
+  border-radius: 14px;
+}
+
+:deep(.ant-empty-description) {
+  color: var(--text-secondary) !important;
+}
+
+@media (max-width: 1280px) {
   .content {
     grid-template-columns: 1fr;
   }
+
   .left {
     width: 100%;
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-page {
+    padding-bottom: 16px;
+  }
+
+  .header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .content {
+    grid-template-columns: 1fr;
+    gap: 14px;
   }
 }
 </style>

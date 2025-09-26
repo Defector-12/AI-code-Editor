@@ -78,7 +78,7 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div id="appManagePage">
+  <div id="appManagePage" class="glass-surface">
     <a-form layout="inline" :model="searchParams" @finish="doSearch">
       <a-form-item label="名称">
         <a-input v-model:value="searchParams.appName" placeholder="输入名称" />
@@ -134,5 +134,16 @@ onMounted(fetchData)
 <style scoped>
 #appManagePage {
   width: 100%;
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
+}
+
+@media (max-width: 768px) {
+  #appManagePage {
+    padding: 16px;
+  }
 }
 </style>

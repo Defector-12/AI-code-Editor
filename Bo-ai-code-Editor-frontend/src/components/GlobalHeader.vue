@@ -89,11 +89,11 @@ function onMenuClick(info: { key: string }) {
     <div class="gh-left">
       <div class="gh-title">{{ siteTitle }}</div>
       <a-menu
+        class="gh-menu"
         mode="horizontal"
         :selectedKeys="selectedKeys"
         :items="flatMenuItems"
         :disabledOverflow="true"
-        :style="{ background: 'transparent', color: 'rgba(0, 0, 0, 0.88)' }"
         @click="onMenuClick"
       />
     </div>
@@ -128,31 +128,75 @@ function onMenuClick(info: { key: string }) {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
-  gap: 12px;
+  padding: 0 20px;
+  border-radius: 16px;
+  background: rgba(24, 9, 37, 0.72);
+  border: 1px solid rgba(177, 140, 255, 0.12);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
+  color: var(--text-primary);
 }
+
 .gh-left {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 18px;
   min-width: 0;
 }
+
 .gh-title {
   font-weight: 600;
-  font-size: 16px;
-  white-space: nowrap;
+  font-size: 18px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent-strong);
 }
+
+.gh-menu {
+  background: transparent;
+  color: var(--text-secondary);
+}
+
+:deep(.gh-menu .ant-menu-item) {
+  color: var(--text-secondary);
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+:deep(.gh-menu .ant-menu-item-selected) {
+  color: var(--accent-strong) !important;
+  background: rgba(177, 140, 255, 0.12) !important;
+  border-radius: 12px !important;
+}
+
+:deep(.gh-menu .ant-menu-item::after) {
+  display: none;
+}
+
 :deep(.ant-menu) {
   border-bottom: none;
+  background: transparent;
 }
-@media (max-width: 768px) {
-  :deep(.ant-menu) {
-    display: none;
-  }
-}
+
 .gh-right {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+:deep(.ant-avatar) {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+
+@media (max-width: 768px) {
+  :deep(.ant-menu) {
+    display: none;
+  }
+
+  .gh {
+    height: auto;
+    padding: 12px 16px;
+  }
 }
 </style>

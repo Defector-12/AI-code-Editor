@@ -52,7 +52,7 @@ onMounted(fetchData)
 </script>
 
 <template>
-  <div id="chatManagePage">
+  <div id="chatManagePage" class="glass-surface">
     <a-form layout="inline" :model="searchParams" @finish="doSearch">
       <a-form-item label="应用ID">
         <a-input-number v-model:value="searchParams.appId" :min="1" style="width: 160px" />
@@ -99,5 +99,16 @@ onMounted(fetchData)
 <style scoped>
 #chatManagePage {
   width: 100%;
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
+}
+
+@media (max-width: 768px) {
+  #chatManagePage {
+    padding: 16px;
+  }
 }
 </style>

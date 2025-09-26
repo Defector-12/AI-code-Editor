@@ -107,11 +107,38 @@ const toWork = (deployKey?: string, codeGenType?: string) => {
   const url = getDeployUrl(deployKey, codeGenType)
   window.open(url, '_blank')
 }
+
+const sections = [
+  {
+    key: 'my',
+    title: '我的应用',
+    searchModel: mySearch,
+    onSearch: () => {
+      mySearch.pageNum = 1
+      fetchMyList()
+    },
+    list: myList,
+    pagination: myPagination,
+    showEdit: true,
+  },
+  {
+    key: 'good',
+    title: '精选应用',
+    searchModel: goodSearch,
+    onSearch: () => {
+      goodSearch.pageNum = 1
+      fetchGoodList()
+    },
+    list: goodList,
+    pagination: goodPagination,
+    showEdit: false,
+  },
+]
 </script>
 
 <template>
   <div class="home">
-    <div class="hero">
+    <div class="hero glass-surface">
       <div class="title">AI 应用生成平台</div>
       <div class="subtitle">一句话轻松创建网站应用</div>
       <a-textarea
@@ -127,13 +154,12 @@ const toWork = (deployKey?: string, codeGenType?: string) => {
       </div>
     </div>
 
-    <div class="block">
+    <div class="block glass-surface">
       <div class="block-header">
         <div class="block-title">我的应用</div>
         <a-input-search
           v-model:value="mySearch.appName"
           placeholder="按名称搜索"
-          style="max-width: 280px"
           @search="
             () => {
               mySearch.pageNum = 1
@@ -156,7 +182,7 @@ const toWork = (deployKey?: string, codeGenType?: string) => {
           </a-list-item>
         </template>
       </a-list>
-      <div class="pager">
+      <div class="pager" v-if="myPagination.total">
         <a-pagination
           v-bind="myPagination"
           @change="
@@ -170,13 +196,12 @@ const toWork = (deployKey?: string, codeGenType?: string) => {
       </div>
     </div>
 
-    <div class="block">
+    <div class="block glass-surface">
       <div class="block-header">
         <div class="block-title">精选应用</div>
         <a-input-search
           v-model:value="goodSearch.appName"
           placeholder="按名称搜索"
-          style="max-width: 280px"
           @search="
             () => {
               goodSearch.pageNum = 1
@@ -192,7 +217,7 @@ const toWork = (deployKey?: string, codeGenType?: string) => {
           </a-list-item>
         </template>
       </a-list>
-      <div class="pager">
+      <div class="pager" v-if="goodPagination.total">
         <a-pagination
           v-bind="goodPagination"
           @change="
@@ -210,57 +235,145 @@ const toWork = (deployKey?: string, codeGenType?: string) => {
 
 <style scoped>
 .home {
-  max-width: 1200px;
+  width: 100%;
   margin: 0 auto;
+  padding-bottom: 80px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
 }
+
 .hero {
-  margin: 16px auto 24px;
-  background: transparent;
-  padding: 24px;
-  border-radius: 12px;
+  width: min(80%, 1200px);
+  margin: 24px auto 0;
+  padding: 32px 48px;
+  border-radius: 24px;
   text-align: center;
+  position: relative;
+  overflow: hidden;
 }
+
+.hero::before {
+  content: '';
+  position: absolute;
+  inset: -20% 20%;
+  background: radial-gradient(circle at center, rgba(255, 255, 255, 0.18), transparent 65%);
+  opacity: 0.85;
+  filter: blur(60px);
+  pointer-events: none;
+}
+
 .title {
-  font-size: 28px;
+  font-size: 36px;
   font-weight: 700;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+  color: var(--text-primary);
 }
+
 .subtitle {
-  color: rgba(0, 0, 0, 0.45);
-  margin: 8px 0 16px;
+  color: var(--text-secondary);
+  margin: 8px 0 24px;
+  font-size: 16px;
 }
+
 .hero-input {
-  border: none;
-  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.12);
+  border: 1px solid rgba(177, 140, 255, 0.28) !important;
+  background: rgba(15, 6, 28, 0.55) !important;
+  border-radius: 16px !important;
+  box-shadow: 0 18px 32px rgba(8, 2, 20, 0.45);
 }
+
 .hero-actions {
-  margin-top: 12px;
+  margin-top: 18px;
 }
 
 .block {
-  margin-top: 24px;
+  width: min(80%, 1200px);
+  padding: 24px;
+  border-radius: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  backdrop-filter: blur(calc(var(--blur-strength) * 0.8));
 }
+
 .block-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
+  gap: 16px;
 }
+
 .block-title {
   font-weight: 600;
-  font-size: 18px;
+  font-size: 20px;
+  color: var(--accent-strong);
+  letter-spacing: 0.03em;
 }
+
 .pager {
   display: flex;
   justify-content: center;
-  margin: 16px 0;
+  margin: 8px 0 4px;
+}
+
+:deep(.ant-input-search) {
+  max-width: 300px;
+}
+
+:deep(.ant-input-search .ant-input) {
+  border-radius: 14px !important;
+}
+
+:deep(.ant-list-grid .ant-row) {
+  row-gap: 18px !important;
 }
 
 img {
   width: 100%;
   height: 180px;
   object-fit: cover;
+  border-radius: 16px;
 }
 
+@media (max-width: 1024px) {
+  .hero {
+    padding: 24px;
+  }
+
+  .block {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .home {
+    padding: 0 12px 80px;
+  }
+
+  .hero,
+  .block {
+    width: 100%;
+  }
+
+  .hero {
+    padding: 20px 16px;
+  }
+
+  .title {
+    font-size: 28px;
+  }
+
+  :deep(.ant-list-grid .ant-row) {
+    row-gap: 12px !important;
+  }
+
+  :deep(.ant-list-grid .ant-col) {
+    width: 100% !important;
+  }
+}
 /* 页面级渐变背景 */
 :root,
 body,

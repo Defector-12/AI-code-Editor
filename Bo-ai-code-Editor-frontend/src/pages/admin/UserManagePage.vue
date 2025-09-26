@@ -1,5 +1,5 @@
 <template>
-  <div id="userManagePage">
+  <div id="userManagePage" class="glass-surface">
     <!-- 搜索表单 -->
     <a-form layout="inline" :model="searchParams" @finish="doSearch">
       <a-form-item label="账号">
@@ -154,5 +154,16 @@ onMounted(() => {
 <style>
 #userManagePage {
   width: 100%;
+  padding: 24px;
+  border-radius: 22px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
+}
+
+@media (max-width: 768px) {
+  #userManagePage {
+    padding: 16px;
+  }
 }
 </style>

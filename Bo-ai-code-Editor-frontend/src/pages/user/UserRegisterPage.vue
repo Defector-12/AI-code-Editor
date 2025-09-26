@@ -41,13 +41,14 @@ const onFinishFailed = (errorInfo: any) => {
 </script>
 
 <template>
-  <div id="userRegisterPage">
+  <div id="userRegisterPage" class="glass-surface">
     <h2 class="title">Bo-ai-code-Editor</h2>
     <div class="desc">一句话生成完整应用</div>
     <a-form
       :model="formState"
       name="basic"
       autocomplete="off"
+      class="register-form"
       @finish="handleSubmit"
       @finishFailed="onFinishFailed"
     >
@@ -81,26 +82,48 @@ const onFinishFailed = (errorInfo: any) => {
   </div>
 </template>
 
-<style>
+<style scoped>
 #userRegisterPage {
   max-width: 360px;
   margin: 0 auto;
+  padding: 32px 28px;
+  border-radius: 24px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
 }
 
 .title {
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
+  color: var(--accent-strong);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
 }
 
 .desc {
   text-align: center;
   margin-bottom: 16px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.03em;
 }
 
 .tips {
   margin-bottom: 16px;
-  color: #bbb;
+  color: var(--text-tertiary);
   font-size: 13px;
   text-align: right;
+}
+
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  #userRegisterPage {
+    padding: 24px 20px;
+  }
 }
 </style>

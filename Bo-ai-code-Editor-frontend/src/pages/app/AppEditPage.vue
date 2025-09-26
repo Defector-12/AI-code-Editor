@@ -93,7 +93,7 @@ async function doSave() {
 </script>
 
 <template>
-  <div class="app-edit">
+  <div class="app-edit glass-surface">
     <a-card title="编辑应用信息">
       <a-form :model="form" layout="vertical" @finish="doSave">
         <a-form-item label="应用名称" required>
@@ -134,5 +134,20 @@ async function doSave() {
 .app-edit {
   max-width: 640px;
   margin: 0 auto;
+  padding: 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
+}
+
+:deep(.ant-form) {
+  margin-top: 12px;
+}
+
+@media (max-width: 768px) {
+  .app-edit {
+    padding: 20px;
+  }
 }
 </style>

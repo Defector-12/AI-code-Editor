@@ -1,11 +1,12 @@
 <template>
-  <div id="userLoginPage">
+  <div id="userLoginPage" class="glass-surface">
     <h2 class="title">Bo-ai-code-Editor</h2>
     <div class="desc">一句话生成完整应用</div>
     <a-form
       :model="formState"
       name="basic"
       autocomplete="off"
+      class="login-form"
       @finish="handleSubmit"
       @finishFailed="onFinishFailed"
     >
@@ -41,7 +42,6 @@ import { useLoginUserStore } from '@/stores/loginUser.ts'
 import { userLogin } from '@/api/userController.ts'
 import { message } from 'ant-design-vue'
 
-
 const formState = reactive<API.UserLoginRequest>({
   userAccount: '',
   userPassword: '',
@@ -59,15 +59,13 @@ const handleSubmit = async (values: any) => {
   // 登陆成功，把登录态保存到全局状态中
   if (res.data.code === 0 && res.data.data) {
     await loginUserStore.fetchLoginUser()
-    message.success("登录成功")
-    router.push(
-      {
-        path: '/',
-        replace: true,
-      }
-    )
+    message.success('登录成功')
+    router.push({
+      path: '/',
+      replace: true,
+    })
   } else {
-    message.error("登陆失败" + res.data.message)
+    message.error('登陆失败' + res.data.message)
   }
 }
 
@@ -76,26 +74,48 @@ const onFinishFailed = (errorInfo: any) => {
 }
 </script>
 
-<style>
+<style scoped>
 #userLoginPage {
   max-width: 360px;
   margin: 0 auto;
+  padding: 32px 28px;
+  border-radius: 24px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
 }
 
-  .title {
-    text-align: center;
-    margin-bottom: 16px;
-  }
+.title {
+  text-align: center;
+  margin-bottom: 12px;
+  color: var(--accent-strong);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
 
-  .desc {
-    text-align: center;
-    margin-bottom: 16px;
-  }
+.desc {
+  text-align: center;
+  margin-bottom: 16px;
+  color: var(--text-tertiary);
+  letter-spacing: 0.03em;
+}
 
-  .tips {
-    margin-bottom: 16px;
-    color: #bbb;
-    font-size: 13px;
-    text-align: right;
+.tips {
+  margin-bottom: 16px;
+  color: var(--text-tertiary);
+  font-size: 13px;
+  text-align: right;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  #userLoginPage {
+    padding: 24px 20px;
   }
+}
 </style>

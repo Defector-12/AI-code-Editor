@@ -34,7 +34,7 @@ const codeGenTypeLabel = computed(() => {
 </script>
 
 <template>
-  <div class="app-detail">
+  <div class="app-detail glass-surface">
     <a-card :title="app?.appName || '应用详情'">
       <template #extra>
         <a-tag v-if="codeGenTypeLabel" color="blue">{{ codeGenTypeLabel }}</a-tag>
@@ -63,5 +63,38 @@ const codeGenTypeLabel = computed(() => {
 .app-detail {
   max-width: 1000px;
   margin: 0 auto;
+  padding: 28px;
+  border-radius: 22px;
+  border: 1px solid rgba(177, 140, 255, 0.18);
+  backdrop-filter: blur(var(--blur-strength));
+  box-shadow: var(--shadow-card);
+}
+
+:deep(.ant-image) {
+  border-radius: 16px;
+  overflow: hidden;
+}
+
+:deep(.ant-descriptions-bordered) {
+  border-color: var(--surface-divider) !important;
+  background: rgba(12, 6, 24, 0.45);
+}
+
+:deep(.ant-descriptions-bordered .ant-descriptions-item-label) {
+  color: var(--text-tertiary) !important;
+}
+
+:deep(.ant-descriptions-item-content) {
+  color: var(--text-secondary) !important;
+}
+
+:deep(.ant-space) {
+  gap: 16px !important;
+}
+
+@media (max-width: 768px) {
+  .app-detail {
+    padding: 20px;
+  }
 }
 </style>

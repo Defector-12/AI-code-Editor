@@ -8,6 +8,7 @@ import Antd from 'ant-design-vue'
 import 'ant-design-vue/dist/reset.css'
 import { createApp } from 'vue'
 import '@/access'
+import '@/assets/theme.css'
 
 const app = createApp(App)
 
