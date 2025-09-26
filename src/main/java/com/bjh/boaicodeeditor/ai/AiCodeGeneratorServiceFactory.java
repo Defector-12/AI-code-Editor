@@ -1,5 +1,6 @@
 package com.bjh.boaicodeeditor.ai;
 
+import com.bjh.boaicodeeditor.ai.guardrail.PromptSafetyInputGuardrail;
 import com.bjh.boaicodeeditor.ai.tools.ToolManager;
 import com.bjh.boaicodeeditor.exception.BusinessException;
 import com.bjh.boaicodeeditor.exception.ErrorCode;
@@ -104,6 +105,8 @@ public class AiCodeGeneratorServiceFactory {
                     .hallucinatedToolNameStrategy(toolExecutionRequest ->
                             ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                             ))
+                        // 添加输入互轨
+                    .inputGuardrails(new PromptSafetyInputGuardrail())
                     .build();
             }
             case HTML, MULTI_FILE -> {
@@ -113,6 +116,8 @@ public class AiCodeGeneratorServiceFactory {
                     .chatModel(chatModel)
                     .streamingChatModel(openAiStreamingChatModel)
                     .chatMemory(chatMemory)
+                    // 添加输入互轨
+                    .inputGuardrails(new PromptSafetyInputGuardrail())
                     .build();
             }
             default ->
