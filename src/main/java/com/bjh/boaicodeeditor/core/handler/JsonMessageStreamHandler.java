@@ -1,16 +1,14 @@
 package com.bjh.boaicodeeditor.core.handler;
-import com.bjh.boaicodeeditor.ai.tools.BaseTool;
-import com.bjh.boaicodeeditor.ai.tools.ToolManager;
-import com.bjh.boaicodeeditor.constant.AppConstant;
-import com.bjh.boaicodeeditor.core.builder.VueProjectBuilder;
-import com.bjh.boaicodeeditor.service.ChatHistoryService;
 
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.bjh.boaicodeeditor.ai.model.message.*;
+import com.bjh.boaicodeeditor.ai.tools.BaseTool;
+import com.bjh.boaicodeeditor.ai.tools.ToolManager;
 import com.bjh.boaicodeeditor.model.entity.User;
 import com.bjh.boaicodeeditor.model.enums.ChatHistoryMessageTypeEnum;
+import com.bjh.boaicodeeditor.service.ChatHistoryService;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -26,9 +24,6 @@ import java.util.Set;
 @Slf4j
 @Component
 public class JsonMessageStreamHandler {
-
-    @Resource
-    private VueProjectBuilder vueProjectBuilder;
 
     @Resource
     private ToolManager toolManager;
@@ -61,8 +56,6 @@ public class JsonMessageStreamHandler {
                     // 流式响应完成后，添加 AI 消息到对话历史
                     String aiResponse = chatHistoryStringBuilder.toString();
                     chatHistoryService.addChatMesage(appId, aiResponse, ChatHistoryMessageTypeEnum.AI.getValue(), loginUser.getId());
-                    String projectPath = AppConstant.CODE_OUTPUT_ROOT_DIR + "/vue_project_" + appId;
-                    vueProjectBuilder.buildProjectAsync(projectPath);
                 })
                 .doOnError(error -> {
                     // 如果AI回复失败，也要记录错误消息
