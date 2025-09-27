@@ -23,6 +23,8 @@ import com.bjh.boaicodeeditor.model.enums.ChatHistoryMessageTypeEnum;
 import com.bjh.boaicodeeditor.model.enums.CodeGenTypeEnum;
 import com.bjh.boaicodeeditor.model.vo.AppVO;
 import com.bjh.boaicodeeditor.model.vo.UserVO;
+import com.bjh.boaicodeeditor.monitor.MonitorContext;
+import com.bjh.boaicodeeditor.monitor.MonitorContextHolder;
 import com.bjh.boaicodeeditor.service.AppService;
 import com.bjh.boaicodeeditor.service.ChatHistoryService;
 import com.bjh.boaicodeeditor.service.ScreenshotService;
@@ -93,11 +95,21 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         }
         // 调用AI前，先保存用户消息到数据库中
         chatHistoryService.addChatMesage(appId, message, ChatHistoryMessageTypeEnum.USER.getValue(), loginUser.getId());
+        // 设置监控上下文
+        MonitorContextHolder.setContext(
+                MonitorContext.builder()
+                        .userId(loginUser.getId().toString())
+                        .appId(appId.toString())
+                        .build()
+        );
         // 调用大模型(流式)
         Flux<String> codeStream = aiCodeGeneratorFacade.generateAndSaveCodeStream(message, codeGenTypeEnum, appId);
         // 收集AI响应内容，并在完成后保存记录到对话历史
-        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum);
-
+        return streamHandlerExecutor.doExecute(codeStream, chatHistoryService, appId, loginUser, codeGenTypeEnum)
+                .doFinally(signalType -> {
+                    // 流结束时清理（无论成功/失败/取消）
+                    MonitorContextHolder.clearContext();
+                });
     }
 
     @Override
