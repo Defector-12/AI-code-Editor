@@ -135,6 +135,15 @@ function onMenuClick(info: { key: string }) {
   backdrop-filter: blur(var(--blur-strength));
   box-shadow: var(--shadow-card);
   color: var(--text-primary);
+
+}
+
+:deep(.gh-menu .ant-menu-item:hover),
+:deep(.gh-menu .ant-menu-item-active),
+:deep(.gh-menu .ant-menu-item-selected) {
+  color: #ffffff !important; /* 或者用 var(--text-primary) */
+  background: rgba(177, 140, 255, 0.12) !important; /* 保持背景高亮 */
+  border-radius: 12px;
 }
 
 .gh-left {
@@ -178,6 +187,7 @@ function onMenuClick(info: { key: string }) {
   border-bottom: none;
   background: transparent;
 }
+
 
 .gh-right {
   display: flex;

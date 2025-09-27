@@ -2,6 +2,7 @@
 import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getAppVoById } from '@/api/appController.ts'
+import { getAppVoByIdByAdmin } from '@/api/appController.ts'
 import { getDeployUrl } from '@/env'
 import { CODE_GEN_TYPE_MAP } from '@/constants/codeGenType.ts'
 
@@ -11,10 +12,20 @@ const appIdStr = String(route.params.id || '')
 const app = ref<API.AppVO | undefined>()
 
 const fetchData = async () => {
-  const res = await getAppVoById({ id: Number(appIdStr) })
-  if (res.data.code === 0) {
-    app.value = res.data.data
-  }
+  try {
+    const res = await getAppVoById({ id: Number(appIdStr) })
+    if (res.data.code === 0 && res.data.data) {
+      app.value = res.data.data
+      return
+    }
+  } catch (error) {}
+
+  try {
+    const resAdmin = await getAppVoByIdByAdmin({ id: Number(appIdStr) })
+    if (resAdmin.data.code === 0 && resAdmin.data.data) {
+      app.value = resAdmin.data.data
+    }
+  } catch (error) {}
 }
 
 onMounted(fetchData)
@@ -35,12 +46,17 @@ const codeGenTypeLabel = computed(() => {
 
 <template>
   <div class="app-detail glass-surface">
-    <a-card :title="app?.appName || '应用详情'">
+    <a-card class="detail-card" :title="app?.appName || '应用详情'">
       <template #extra>
         <a-tag v-if="codeGenTypeLabel" color="blue">{{ codeGenTypeLabel }}</a-tag>
       </template>
       <a-space direction="vertical" style="width: 100%">
-        <a-image :src="app?.cover || 'https://via.placeholder.com/1200x600?text=Cover'" />
+        <a-image
+          class="app-cover"
+          :src="app?.cover || 'https://via.placeholder.com/1200x600?text=Cover'"
+          :fallback="'https://via.placeholder.com/1200x600?text=Cover'"
+          :preview="!!app?.cover"
+        />
         <a-descriptions bordered :column="1">
           <a-descriptions-item label="ID">{{ app?.id }}</a-descriptions-item>
           <a-descriptions-item label="名称">{{ app?.appName }}</a-descriptions-item>
@@ -61,40 +77,55 @@ const codeGenTypeLabel = computed(() => {
 
 <style scoped>
 .app-detail {
-  max-width: 1000px;
-  margin: 0 auto;
-  padding: 28px;
-  border-radius: 22px;
+  width: 90%;
+  max-width: 1200px;
+  margin: 48px auto;
+  padding: 32px;
+  border-radius: 26px;
   border: 1px solid rgba(177, 140, 255, 0.18);
   backdrop-filter: blur(var(--blur-strength));
   box-shadow: var(--shadow-card);
 }
 
-:deep(.ant-image) {
-  border-radius: 16px;
+.detail-card {
+  background: rgba(26, 12, 46, 0.62) !important;
+  border-radius: 22px !important;
   overflow: hidden;
 }
 
-:deep(.ant-descriptions-bordered) {
+.app-cover {
+  width: 100%;
+  max-height: 420px;
+  object-fit: cover;
+  border-radius: 18px;
+}
+
+::deep(.ant-descriptions-bordered) {
   border-color: var(--surface-divider) !important;
   background: rgba(12, 6, 24, 0.45);
 }
 
-:deep(.ant-descriptions-bordered .ant-descriptions-item-label) {
+::deep(.ant-descriptions-bordered .ant-descriptions-item-label) {
   color: var(--text-tertiary) !important;
 }
 
-:deep(.ant-descriptions-item-content) {
+::deep(.ant-descriptions-item-content) {
   color: var(--text-secondary) !important;
 }
 
-:deep(.ant-space) {
+::deep(.ant-space) {
   gap: 16px !important;
 }
 
 @media (max-width: 768px) {
   .app-detail {
-    padding: 20px;
+    width: 100%;
+    padding: 20px 16px;
+    margin: 24px auto;
+  }
+
+  .app-cover {
+    max-height: 240px;
   }
 }
 </style>

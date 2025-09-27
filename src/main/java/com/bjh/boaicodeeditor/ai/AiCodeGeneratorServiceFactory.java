@@ -105,7 +105,7 @@ public class AiCodeGeneratorServiceFactory {
                     .hallucinatedToolNameStrategy(toolExecutionRequest ->
                             ToolExecutionResultMessage.from(toolExecutionRequest, "Error: there is no tool called " + toolExecutionRequest.name()
                             ))
-                    .maxSequentialToolsInvocations(20)  // 最多连续调用 20 次工具
+                    .maxSequentialToolsInvocations(15)  // 减少到15次，提高响应速度
                     // 添加输入互轨
                     .inputGuardrails(new PromptSafetyInputGuardrail())
                     // 添加输出互轨

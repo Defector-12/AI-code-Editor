@@ -4,6 +4,7 @@ import { useRoute, useRouter } from 'vue-router'
 import {
   deployApp,
   getAppVoById,
+  getAppVoByIdByAdmin,
   deleteAppByAdmin,
   deleteApp,
   downloadAppCode,
@@ -76,10 +77,19 @@ const iframeRef = ref<HTMLIFrameElement | null>(null)
 const editorHandle = ref<VisualEditorHandle | null>(null)
 
 const fetchApp = async () => {
-  const res = await getAppVoById({ id: appIdStr as unknown as number })
-  if (res.data.code === 0) {
-    app.value = res.data.data
-  }
+  try {
+    const res = await getAppVoById({ id: appIdStr as unknown as number })
+    if (res.data.code === 0 && res.data.data) {
+      app.value = res.data.data
+      return
+    }
+  } catch {}
+  try {
+    const resAdmin = await getAppVoByIdByAdmin({ id: appIdStr as unknown as number })
+    if (resAdmin.data.code === 0 && resAdmin.data.data) {
+      app.value = resAdmin.data.data
+    }
+  } catch {}
 }
 
 const genDoneKey = `appGenDone:${appIdStr}`

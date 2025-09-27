@@ -8,6 +8,7 @@ import dev.langchain4j.agent.tool.Tool;
 import dev.langchain4j.agent.tool.ToolMemoryId;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
+import jakarta.annotation.Resource;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -20,9 +21,18 @@ import java.nio.file.StandardOpenOption;
 @Component
 public class FileWriteTool extends BaseTool{
 
+    @Resource
+    private FileTracker fileTracker;
+
     @Tool("写入文件到指定路径")
     public String writeFile(@P("文件的相对路径") String relativeFilePath, @P("写入文件的内容") String content,
                             @ToolMemoryId Long appId) {
+        // 检查文件是否已经生成过
+        if (fileTracker.isFileGenerated(appId, relativeFilePath)) {
+            log.warn("文件已经生成过，跳过重复生成: {}", relativeFilePath);
+            return "文件已存在，跳过生成: " + relativeFilePath;
+        }
+        
         try {
             Path path = Paths.get(relativeFilePath);
             if (!path.isAbsolute()) {
@@ -41,6 +51,10 @@ public class FileWriteTool extends BaseTool{
                     StandardOpenOption.CREATE,
                     StandardOpenOption.TRUNCATE_EXISTING);
             log.info("成功写入文件: {}", path.toAbsolutePath());
+            
+            // 记录已生成的文件
+            fileTracker.trackFile(appId, relativeFilePath);
+            
             // 返回相对路径，不能让 AI 把文件绝对路径返回给用户
             return "文件写入成功: " + relativeFilePath;
         } catch (IOException e) {

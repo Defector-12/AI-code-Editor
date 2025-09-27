@@ -162,8 +162,19 @@ public class AppServiceImpl extends ServiceImpl<AppMapper, App>  implements AppS
         }
         // 复制文件到部署目录
         String deployDirPath = AppConstant.CODE_DEPLOY_ROOT_DIR + File.separator + deployKey;
+        File deployDir = new File(deployDirPath);
         try {
-            FileUtil.copyContent(sourceDir, new File(deployDirPath), true);
+            if (deployDir.exists()) {
+                FileUtil.clean(deployDir);
+            }
+            FileUtil.mkdir(deployDir);
+
+            if (codeGenTypeEnum == CodeGenTypeEnum.VUE_PROJECT) {
+                // Vue 项目部署保留 dist 结构，避免破坏资源引用路径
+                FileUtil.copy(sourceDir, new File(deployDirPath), true);
+            } else {
+                FileUtil.copyContent(sourceDir, deployDir, true);
+            }
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.SYSTEM_ERROR, "应用部署失败：" + e.getMessage());
         }

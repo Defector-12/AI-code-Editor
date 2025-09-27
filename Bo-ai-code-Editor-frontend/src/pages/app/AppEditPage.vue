@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import {
   getAppVoById,
@@ -29,7 +29,7 @@ const fillForm = (a: API.AppVO) => {
   form.id = (a.id as number | undefined) ?? (appIdStr as unknown as number)
   form.appName = a.appName || ''
   form.cover = a.cover || ''
-  form.priority = (a.priority as number | undefined) ?? undefined
+  form.priority = a.priority === 99 ? 99 : 0
   form.codeGenType = (a.codeGenType as CodeGenType) || undefined
 }
 
@@ -57,6 +57,30 @@ onMounted(fetchData)
 // 已由 fetchData 进行一次回填；如果用户从路由切回触发 keep-alive，可再次手动触发
 
 const saving = ref(false)
+const priorityPopoverOpen = ref(false)
+const lastValidPriority = ref<number | undefined>(0)
+
+const quickSetPriority = (value: number) => {
+  form.priority = value
+  lastValidPriority.value = value
+  priorityPopoverOpen.value = false
+}
+
+watch(
+  () => form.priority,
+  (val, oldVal) => {
+    if (val === undefined) {
+      lastValidPriority.value = undefined
+      return
+    }
+    if (val === 0 || val === 99) {
+      lastValidPriority.value = val
+      return
+    }
+    message.warning('优先级仅支持填写 0 或 99，其中 99 表示精选')
+    form.priority = lastValidPriority.value ?? 0
+  },
+)
 
 async function doSave() {
   // 管理员可改名称/封面/优先级；普通用户仅名称
@@ -115,14 +139,29 @@ async function doSave() {
             </a-select>
           </a-form-item>
           <a-form-item label="优先级">
-            <a-input-number v-model:value="form.priority" :min="0" :max="999" style="width: 100%" />
+            <a-popover v-model:open="priorityPopoverOpen" trigger="click">
+              <template #title>快速设置</template>
+              <template #content>
+                <a-space direction="vertical" style="min-width: 160px">
+                  <a-button type="text" block @click="quickSetPriority(0)">设为普通 (0)</a-button>
+                  <a-button type="text" block @click="quickSetPriority(99)">设为精选 (99)</a-button>
+                </a-space>
+              </template>
+              <a-input-number
+                v-model:value="form.priority"
+                :min="0"
+                :max="99"
+                style="width: 100%"
+                @focus="priorityPopoverOpen = true"
+              />
+            </a-popover>
           </a-form-item>
         </template>
 
         <a-form-item>
           <a-space>
             <a-button type="primary" html-type="submit" :loading="saving">保存</a-button>
-            <a-button @click="router.back()">取消</a-button>
+            <a-button class="btn-cancel" ghost @click="router.back()">取消</a-button>
           </a-space>
         </a-form-item>
       </a-form>
@@ -132,8 +171,9 @@ async function doSave() {
 
 <style scoped>
 .app-edit {
-  max-width: 640px;
-  margin: 0 auto;
+  width: 80%;
+  max-width: 1200px;
+  margin: 40px auto;
   padding: 28px;
   border-radius: 22px;
   border: 1px solid rgba(177, 140, 255, 0.18);
@@ -147,7 +187,31 @@ async function doSave() {
 
 @media (max-width: 768px) {
   .app-edit {
+    width: 100%;
     padding: 20px;
+    margin: 24px auto;
   }
+}
+
+.app-edit :deep(.ant-input-number-input) {
+  color: #ffffff !important;
+}
+
+.app-edit :deep(.ant-input-number-handler-wrap) {
+  display: none;
+}
+
+.btn-cancel {
+  border-color: rgba(255, 255, 255, 0.25) !important;
+  color: var(--text-secondary) !important;
+  background: transparent;
+}
+
+.btn-cancel:hover,
+.btn-cancel:active,
+.btn-cancel:focus {
+  color: var(--text-primary) !important;
+  border-color: rgba(177, 140, 255, 0.45) !important;
+  background: rgba(30, 14, 50, 0.45) !important;
 }
 </style>

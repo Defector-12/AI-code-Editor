@@ -12,7 +12,7 @@
   --text-secondary: rgba(230, 223, 255, 0.7);
   --text-tertiary: rgba(255, 255, 255, 0.5);
   --accent: #b18cff;
-  --accent-strong: #cfa5ff;
+  --accent-strong: #f4f4f4;
   --accent-saturated: #6840f7;
   --accent-glow: rgb(243, 237, 237);
   --success: #5ad4b4;
@@ -182,9 +182,36 @@ a:hover {
   color: var(--text-secondary) !important;
 }
 
+.ant-select-item-option-active:not(.ant-select-item-option-disabled),
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled) {
+  background: var(--surface-dark) !important;
+  color: var(--text-primary) !important;
+  border-radius: 8px;
+  box-shadow: none;
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled)
+  .ant-select-item-option-content,
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled)
+  .ant-select-item-option-content {
+  color: var(--text-primary) !important;
+}
+
+.ant-select-item-option-active:not(.ant-select-item-option-disabled) .ant-select-item-option-state,
+.ant-select-item-option-selected:not(.ant-select-item-option-disabled)
+  .ant-select-item-option-state {
+  color: var(--text-primary) !important;
+}
+
 .ant-table-tbody > tr > td,
 .ant-table-thead > tr > th {
   border-color: var(--surface-divider) !important;
+}
+
+.ant-table-tbody > tr:hover > td,
+.ant-table-tbody > tr.ant-table-row:hover > td,
+.ant-table-tbody > tr > td.ant-table-cell-row-hover {
+  background: transparent !important;
 }
 
 .ant-checkbox-inner,

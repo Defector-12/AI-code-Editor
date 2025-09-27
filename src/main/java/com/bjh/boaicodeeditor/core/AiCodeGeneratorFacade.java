@@ -8,6 +8,7 @@ import com.bjh.boaicodeeditor.ai.model.MultiFileCodeResult;
 import com.bjh.boaicodeeditor.ai.model.message.AiResponseMessage;
 import com.bjh.boaicodeeditor.ai.model.message.ToolExecutedMessage;
 import com.bjh.boaicodeeditor.ai.model.message.ToolRequestMessage;
+import com.bjh.boaicodeeditor.ai.tools.FileTracker;
 import com.bjh.boaicodeeditor.constant.AppConstant;
 import com.bjh.boaicodeeditor.core.builder.VueProjectBuilder;
 import com.bjh.boaicodeeditor.core.parser.CodeParserExecutor;
@@ -37,6 +38,9 @@ public class AiCodeGeneratorFacade {
 
     @Resource
     private VueProjectBuilder vueProjectBuilder;
+    
+    @Resource
+    private FileTracker fileTracker;
 
     /**
      * 统一入口，根据类型生成并保存代码
@@ -88,6 +92,8 @@ public class AiCodeGeneratorFacade {
                 yield  processCodeStream(codeStream, CodeGenTypeEnum.MULTI_FILE, appId);
             }
             case VUE_PROJECT -> {
+                // 清除之前的文件跟踪记录，防止重复生成
+                fileTracker.clearTracking(appId);
                 TokenStream tokenStream = aiCodeGeneratorService.generateVueProjectCodeStream(appId, userMessage);
                 yield  processTokenStream(tokenStream, appId);
             }

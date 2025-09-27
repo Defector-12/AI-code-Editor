@@ -70,17 +70,21 @@ const emit = defineEmits<{
   border-top: 1px solid rgba(177, 140, 255, 0.12);
 }
 
-.app-card :deep(.ant-card-actions li a) {
-  color: #fbfbfb;
+/* 直接选择 .ant-card-actions 下的 a 和图标 —— 与 .app-card 同级/同元素兼容 */
+.app-card :deep(.ant-card-actions > li > span > a),
+.app-card :deep(.ant-card-actions > li > span > .anticon) {
+  color: #ffffff !important;
   transition:
     color 0.2s ease,
     text-shadow 0.2s ease;
 }
 
-.app-card :deep(.ant-card-actions li a:hover) {
-  color: var(--accent-glow);
+.app-card :deep(.ant-card-actions > li > span > a:hover),
+.app-card :deep(.ant-card-actions > li > span > .anticon:hover) {
+  color: var(--accent-glow) !important;
   text-shadow: 0 0 8px var(--accent-glow);
 }
+
 
 img {
   width: 100%;
